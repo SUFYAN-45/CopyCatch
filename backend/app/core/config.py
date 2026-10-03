@@ -19,6 +19,10 @@ class Settings(BaseSettings):
         "http://localhost:3000",
     ]
 
+    # Database Configuration (MongoDB Atlas)
+    MONGODB_URI: str = ""
+    MONGODB_DATABASE: str = "copycatch"
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
@@ -38,6 +42,11 @@ class Settings(BaseSettings):
                     pass
             return [item.strip() for item in v.split(",") if item.strip()]
         return v
+
+    @property
+    def is_mongodb_configured(self) -> bool:
+        """Check whether a MongoDB URI has been provided."""
+        return bool(self.MONGODB_URI and self.MONGODB_URI.strip())
 
 
 settings = Settings()

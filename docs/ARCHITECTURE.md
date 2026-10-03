@@ -21,8 +21,10 @@
 - **Text Preprocessing & Linguistic Analysis:** NLTK / spaCy (where appropriate)
 
 ### Database & Persistence
-- **Database:** MongoDB
-- **Driver:** Appropriate asynchronous MongoDB driver (e.g., Motor)
+- **Database:** MongoDB (MongoDB Atlas cloud deployment)
+- **Driver:** Official Python MongoDB driver (`pymongo` with `dnspython`)
+- **Connection Lifecycle:** Managed singleton `DatabaseManager` tied to FastAPI lifespan
+- **Data Access Pattern:** `BaseRepository` pattern (`backend/app/repositories/base.py`)
 
 ### Authentication & Authorization
 - **Security Mechanism:** JSON Web Tokens (JWT) with secure password hashing (e.g., Argon2 / bcrypt)
