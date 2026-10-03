@@ -1,0 +1,1 @@
+"""CopyCatch application package."""
