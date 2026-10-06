@@ -1,12 +1,13 @@
 """Lightweight local filesystem storage service."""
 
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from app.core.config import settings
-from app.schemas.analysis import AnalysisResult
+from app.schemas.analysis import AnalysisResult, ReferenceDocumentInfo
 from app.schemas.document import DocumentMetadata
 from app.utils.file_validation import sanitize_filename
 
@@ -61,6 +62,43 @@ class LocalStorageService:
         )
         return destination, metadata
 
+    def get_reference_documents(self) -> List[Path]:
+        """Return list of valid file paths currently in the reference documents corpus."""
+        self.ensure_directories()
+        files = []
+        for p in self.reference_dir.iterdir():
+            if p.is_file() and p.name != ".gitkeep" and not p.name.startswith("."):
+                files.append(p)
+        return sorted(files, key=lambda x: x.name.lower())
+
+    def list_reference_documents(self) -> List[ReferenceDocumentInfo]:
+        """List summary info for all available reference documents."""
+        self.ensure_directories()
+        refs: List[ReferenceDocumentInfo] = []
+        for path in self.get_reference_documents():
+            stat = path.stat()
+            modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+            refs.append(
+                ReferenceDocumentInfo(
+                    filename=path.name,
+                    size=stat.st_size,
+                    modified_at=modified,
+                )
+            )
+        return refs
+
+    def delete_reference_document(self, filename: str) -> bool:
+        """Delete a reference document from backend/data/reference_documents/."""
+        self.ensure_directories()
+        safe_name = sanitize_filename(filename)
+        target = self.reference_dir / safe_name
+
+        if not target.is_file():
+            return False
+
+        target.unlink()
+        return True
+
     def save_report(self, report: AnalysisResult) -> Path:
         """Persist an analysis report as analysis_<analysis_id>.json in backend/data/reports/."""
         self.ensure_directories()
@@ -83,7 +121,6 @@ class LocalStorageService:
         self.ensure_directories()
         report_ids: List[str] = []
         for file in self.reports_dir.glob("analysis_*.json"):
-            # Extract id from analysis_<id>.json
             name = file.stem
             if name.startswith("analysis_"):
                 report_ids.append(name.replace("analysis_", "", 1))

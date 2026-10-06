@@ -1,6 +1,6 @@
 """Schemas package for CopyCatch."""
 
-from app.schemas.analysis import AnalysisResult, Match, MatchLocation
+from app.schemas.analysis import AnalysisResult, Match, MatchLocation, ReferenceDocumentInfo
 from app.schemas.document import DocumentMetadata
 
 __all__ = [
@@ -8,4 +8,5 @@ __all__ = [
     "DocumentMetadata",
     "Match",
     "MatchLocation",
+    "ReferenceDocumentInfo",
 ]

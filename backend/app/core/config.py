@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import List, Set, Union
+from typing import Dict, List, Set, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB
     ALLOWED_EXTENSIONS: Set[str] = {".txt", ".pdf", ".docx"}
 
+    # NLP & Plagiarism Detection Settings
+    MODEL_NAME: str = "all-MiniLM-L6-v2"
+    DEFAULT_SEMANTIC_WEIGHT: float = 0.60
+    DEFAULT_LEXICAL_WEIGHT: float = 0.40
+    MATCH_SIMILARITY_THRESHOLD: float = 50.0  # Percentage threshold for reporting chunk match
+    TOP_K_MATCHES: int = 15
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
@@ -52,6 +59,21 @@ class Settings(BaseSettings):
                     pass
             return [item.strip() for item in v.split(",") if item.strip()]
         return v
+
+    @staticmethod
+    def classify_similarity(score: float) -> str:
+        """Classify a 0-100 similarity score into an understandable category."""
+        clamped = max(0.0, min(100.0, score))
+        if clamped <= 20.0:
+            return "Very Low Similarity"
+        elif clamped <= 40.0:
+            return "Low Similarity"
+        elif clamped <= 60.0:
+            return "Moderate Similarity"
+        elif clamped <= 80.0:
+            return "High Similarity"
+        else:
+            return "Very High Similarity"
 
 
 settings = Settings()

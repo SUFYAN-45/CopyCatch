@@ -1,55 +1,130 @@
-"""Document extraction service boundary.
+"""Document extraction service for TXT, PDF, and DOCX files."""
 
-Defines the extraction contract and boundaries for extracting plain text
-from supported document formats (.txt, .pdf, .docx).
-Full multi-format engine integration will be completed in the NLP engine phase.
-"""
-
+import io
 from pathlib import Path
 from typing import Union
+import zipfile
+
+import docx
+import pypdf
+from pypdf.errors import FileNotDecryptedError, PdfReadError
+
+
+class DocumentExtractionError(Exception):
+    """Base exception raised when document extraction fails."""
+
+
+class DocumentEmptyError(DocumentExtractionError):
+    """Raised when the document is empty or contains no extractable text."""
+
+
+class UnsupportedFormatError(DocumentExtractionError):
+    """Raised when an unsupported document format is encountered."""
 
 
 class DocumentExtractor:
-    """Service boundary for document content extraction."""
+    """Extracts plain text from supported document formats (.txt, .pdf, .docx)."""
 
     SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".docx"}
 
     @classmethod
     def extract_text(cls, file_path: Union[str, Path]) -> str:
-        """Extract text from the specified document path according to file type."""
+        """Extract all text from the specified document path."""
         path = Path(file_path)
-        ext = path.suffix.lower()
 
+        if not path.exists():
+            raise DocumentExtractionError(f"File not found: '{path}'.")
+
+        if path.stat().st_size == 0:
+            raise DocumentEmptyError(f"Document '{path.name}' is empty (0 bytes).")
+
+        ext = path.suffix.lower()
         if ext not in cls.SUPPORTED_EXTENSIONS:
-            raise ValueError(f"Unsupported document format '{ext}' for text extraction.")
+            allowed = ", ".join(sorted(cls.SUPPORTED_EXTENSIONS))
+            raise UnsupportedFormatError(
+                f"Unsupported format '{ext}'. Supported formats are: {allowed}."
+            )
 
         if ext == ".txt":
-            return cls._extract_txt(path)
+            raw_text = cls.extract_txt(path)
         elif ext == ".pdf":
-            return cls._extract_pdf(path)
+            raw_text = cls.extract_pdf(path)
         elif ext == ".docx":
-            return cls._extract_docx(path)
+            raw_text = cls.extract_docx(path)
         else:
-            raise NotImplementedError(f"Extractor for format {ext} is not yet implemented.")
+            raise UnsupportedFormatError(f"Unhandled file extension: '{ext}'.")
+
+        cleaned_text = raw_text.strip()
+        if not cleaned_text:
+            raise DocumentEmptyError(f"Document '{path.name}' contains no readable text content.")
+
+        return cleaned_text
 
     @staticmethod
-    def _extract_txt(path: Path) -> str:
-        """Extract text from a plain-text file."""
+    def extract_txt(path: Path) -> str:
+        """Extract text from a plain-text document with encoding fallback."""
         try:
             return path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
-            # Fallback with error replacement for non-standard encodings
-            return path.read_text(encoding="latin-1", errors="replace")
+            try:
+                return path.read_text(encoding="latin-1")
+            except Exception:
+                return path.read_text(encoding="utf-8", errors="replace")
+        except Exception as err:
+            raise DocumentExtractionError(f"Failed to read TXT file '{path.name}': {err}") from err
 
     @staticmethod
-    def _extract_pdf(path: Path) -> str:
-        """PDF extraction boundary (to be powered by PDF parser in upcoming engine phase)."""
-        raise NotImplementedError("PDF text extraction will be implemented in the NLP engine phase.")
+    def extract_pdf(path: Path) -> str:
+        """Extract text from all pages of a PDF document using pypdf."""
+        try:
+            reader = pypdf.PdfReader(str(path))
+
+            if reader.is_encrypted:
+                try:
+                    # Attempt decrypt with empty password for unprompted reading
+                    decrypted = reader.decrypt("")
+                    if decrypted == 0:
+                        raise DocumentExtractionError("PDF is encrypted and password-protected.")
+                except Exception as err:
+                    raise DocumentExtractionError(f"PDF is encrypted: {err}") from err
+
+            extracted_pages = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    extracted_pages.append(page_text.strip())
+
+            return "\n\n".join(extracted_pages)
+
+        except (PdfReadError, FileNotDecryptedError) as err:
+            raise DocumentExtractionError(f"Corrupted or invalid PDF file '{path.name}': {err}") from err
+        except Exception as err:
+            raise DocumentExtractionError(f"Failed to extract PDF '{path.name}': {err}") from err
 
     @staticmethod
-    def _extract_docx(path: Path) -> str:
-        """DOCX extraction boundary (to be powered by DOCX parser in upcoming engine phase)."""
-        raise NotImplementedError("DOCX text extraction will be implemented in the NLP engine phase.")
+    def extract_docx(path: Path) -> str:
+        """Extract text from paragraphs and tables of a DOCX document."""
+        try:
+            doc = docx.Document(str(path))
+            elements = []
+
+            for paragraph in doc.paragraphs:
+                text = paragraph.text.strip()
+                if text:
+                    elements.append(text)
+
+            for table in doc.tables:
+                for row in table.rows:
+                    row_cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if row_cells:
+                        elements.append(" | ".join(row_cells))
+
+            return "\n\n".join(elements)
+
+        except (zipfile.BadZipFile, KeyError) as err:
+            raise DocumentExtractionError(f"Corrupted or invalid DOCX archive '{path.name}': {err}") from err
+        except Exception as err:
+            raise DocumentExtractionError(f"Failed to extract DOCX '{path.name}': {err}") from err
 
 
 document_extractor = DocumentExtractor()

@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.analysis import AnalysisResult, Match, MatchLocation
+from app.schemas.analysis import AnalysisResult, Match, MatchLocation, ReferenceDocumentInfo
 from app.schemas.document import DocumentMetadata
 
 
@@ -35,63 +35,81 @@ def test_document_metadata_invalid_size() -> None:
 
 def test_match_schema_valid() -> None:
     """Verify Match schema accepts valid scoring and location data."""
-    location = MatchLocation(start_char=10, end_char=50, page=1)
+    location = {"start_char": 10, "end_char": 50, "page": 1}
     match = Match(
         source="ref_document_01.txt",
-        matched_text="The quick brown fox jumps over the lazy dog.",
-        similarity_score=0.92,
+        submitted_text="The quick brown fox jumps over the lazy dog.",
+        matched_text="A quick brown fox leaps across the lazy hound.",
+        similarity_score=92.5,
+        match_type="hybrid",
         location=location,
     )
     assert match.source == "ref_document_01.txt"
-    assert match.similarity_score == 0.92
-    assert match.location.page == 1
-    assert match.location.start_char == 10
+    assert match.similarity_score == 92.5
+    assert match.match_type == "hybrid"
+    assert match.location["start_char"] == 10
 
 
 def test_match_schema_score_out_of_bounds() -> None:
-    """Verify similarity score outside [0.0, 1.0] raises ValidationError."""
+    """Verify similarity score outside [0.0, 100.0] raises ValidationError."""
     with pytest.raises(ValidationError):
         Match(
             source="source.txt",
-            matched_text="test",
-            similarity_score=1.5,
+            submitted_text="test query",
+            matched_text="test ref",
+            similarity_score=105.0,
         )
 
     with pytest.raises(ValidationError):
         Match(
             source="source.txt",
-            matched_text="test",
-            similarity_score=-0.1,
+            submitted_text="test query",
+            matched_text="test ref",
+            similarity_score=-1.0,
         )
 
 
 def test_analysis_result_valid() -> None:
-    """Verify AnalysisResult schema validates correctly with nested matches."""
+    """Verify AnalysisResult schema validates correctly with nested matches and classification."""
     match = Match(
         source="corpus_item_42.txt",
-        matched_text="Natural language processing enables intelligent text comparison.",
-        similarity_score=0.85,
+        submitted_text="Natural language processing enables intelligent text comparison.",
+        matched_text="Natural language processing powers smart text comparison.",
+        similarity_score=85.0,
+        match_type="semantic",
     )
     result = AnalysisResult(
         document_id="doc_abc_123",
-        overall_similarity=0.78,
-        semantic_similarity=0.82,
-        lexical_similarity=0.72,
+        overall_similarity=78.5,
+        semantic_similarity=82.0,
+        lexical_similarity=72.0,
+        classification="High Similarity",
         matches=[match],
     )
     assert result.document_id == "doc_abc_123"
-    assert result.overall_similarity == 0.78
+    assert result.overall_similarity == 78.5
+    assert result.classification == "High Similarity"
     assert len(result.matches) == 1
     assert isinstance(result.analysis_id, str)
     assert isinstance(result.analyzed_at, datetime)
 
 
 def test_analysis_result_score_bounds() -> None:
-    """Verify AnalysisResult rejects invalid similarity scores."""
+    """Verify AnalysisResult rejects invalid similarity scores outside [0, 100]."""
     with pytest.raises(ValidationError):
         AnalysisResult(
-            document_id="doc_1",
-            overall_similarity=1.1,  # Out of bounds
-            semantic_similarity=0.5,
-            lexical_similarity=0.5,
+            overall_similarity=101.0,  # Out of bounds
+            semantic_similarity=50.0,
+            lexical_similarity=50.0,
         )
+
+
+def test_reference_document_info_schema() -> None:
+    """Verify ReferenceDocumentInfo schema parsing."""
+    ref = ReferenceDocumentInfo(
+        filename="source.pdf",
+        size=4096,
+        modified_at=datetime.now(),
+    )
+    assert ref.filename == "source.pdf"
+    assert ref.size == 4096

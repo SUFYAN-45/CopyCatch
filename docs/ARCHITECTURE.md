@@ -1,90 +1,97 @@
 # CopyCatch — System Architecture
 
-> **Notice:** CopyCatch is intentionally designed and optimized as a focused **mini project**. All external database systems (including MongoDB and MongoDB Atlas) have been completely removed to prioritize fast, frictionless delivery of the actual plagiarism-detection product.
+> **Notice:** CopyCatch is an algorithmic plagiarism and similarity detection system optimized as a lightweight, fast-moving mini project. It operates completely with local filesystem storage and requires no external databases or distributed processing infrastructure.
 
 ---
 
 ## 1. High-Level Technology Stack
 
-### Frontend
-- **Framework & Core:** React, TypeScript, Vite *(Scheduled for future UI phase)*
-- **Styling & Components:** Tailwind CSS, shadcn/ui
-
 ### Backend
-- **Core Runtime & API:** Python 3.13, FastAPI
-- **Architecture:** Lightweight service-oriented architecture with clean boundaries:
-  - `api/`: API router aggregation and HTTP endpoints (`/health`).
+- **Core Runtime & API:** Python 3.13, FastAPI, Uvicorn
+- **Architecture:** Layered service-oriented architecture with clean boundaries:
+  - `api/`: Endpoint routers (`health.py`, `analysis.py`, `references.py`).
   - `core/`: Configuration via Pydantic Settings (`app/core/config.py`).
-  - `models/`: Internal domain models.
-  - `schemas/`: Pydantic schemas for data validation (`DocumentMetadata`, `Match`, `AnalysisResult`).
-  - `services/`: Dedicated business logic divided into:
-    - `document/`: File ingestion and text extraction (`.txt`, `.pdf`, `.docx`).
-    - `nlp/`: Text normalization and token/sentence chunking.
-    - `plagiarism/`: Semantic, lexical, and hybrid scoring engine.
-    - `storage/`: Lightweight local filesystem storage.
-  - `utils/`: Utilities for filename sanitization, safe validation, and security guards.
+  - `schemas/`: Pydantic validation models (`DocumentMetadata`, `Match`, `AnalysisResult`, `ReferenceDocumentInfo`).
+  - `services/`: Dedicated business domain services:
+    - `document/`: File parsing and text extraction (`extractor.py`).
+    - `nlp/`: Text cleaning, normalization, and sentence chunking (`preprocessor.py`).
+    - `nlp/`: Dense vector embeddings via Sentence Transformers (`semantic.py`).
+    - `plagiarism/`: TF-IDF and n-gram lexical analysis (`lexical.py`).
+    - `plagiarism/`: Hybrid scoring and match detection (`detector.py`).
+    - `plagiarism/`: Full-pipeline orchestration service (`service.py`).
+    - `storage/`: Local disk management for uploads, references, and reports (`local_storage.py`).
+  - `utils/`: Path sanitization and binary magic-byte validation (`file_validation.py`).
 
-### Storage & Persistence
-- **Storage Type:** Lightweight Local Filesystem Storage (`backend/data/`).
-- **External Database:** **None.** (No MongoDB, Supabase, PostgreSQL, SQLite, or Firebase required).
-- **Directory Layout:**
-  - `backend/data/uploads/`: Stores submitted files for analysis (git-ignored).
-  - `backend/data/reference_documents/`: Stores reference corpus documents (git-ignored).
-  - `backend/data/reports/`: Stores analysis outcomes as standalone JSON files (`analysis_<id>.json`, git-ignored).
-- **Service Layer:** `LocalStorageService` (`app/services/storage/local_storage.py`) providing a clean, replaceable file management layer.
+### NLP & Machine Learning Engine
+- **Dense Semantic Embeddings:** Sentence Transformers model `all-MiniLM-L6-v2` (384-dimensional dense vectors, normalized for dot-product cosine similarity). Loaded as an in-memory singleton.
+- **Lexical & N-Gram Matching:** Scikit-learn `TfidfVectorizer` (sublinear term frequency, word 1-3 grams) combined with word 3-gram containment.
+- **Document Extractors:** `pypdf` for PDF parsing; `python-docx` for DOCX parsing; standard library UTF-8 / Latin-1 fallback for plain text.
 
-### Upcoming NLP & Plagiarism Detection Engine
-- **Embedding Models:** Sentence Transformers (`all-mpnet-base-v2`) for dense semantic embeddings.
-- **Lexical Matching:** N-gram overlap, Jaccard similarity, and TF-IDF vectors via scikit-learn.
-- **Scoring Aggregator:** Calibrated hybrid scoring combining semantic and lexical similarities.
+### Persistence & Storage
+- **Storage Strategy:** Local Filesystem (`backend/data/`):
+  - `uploads/`: Ingested document files.
+  - `reference_documents/`: Reference corpus documents.
+  - `reports/`: Standalone JSON analysis reports (`analysis_<id>.json`).
+- **External Database:** **None** (No MongoDB, Supabase, PostgreSQL, SQLite, or Firebase required).
 
 ---
 
-## 2. Planned Pipeline & Subsystems
+## 2. Plagiarism Detection Pipeline
 
-The core CopyCatch detection workflow operates across five explicit service boundaries:
+The detection workflow proceeds through six coordinated stages:
 
 ```text
-Uploaded File (.txt, .pdf, .docx)
+Uploaded Document (.txt, .pdf, .docx)
        │
        ▼
 [1. File Validation & Sanitization] (backend/app/utils/file_validation.py)
        │
        ▼
-[2. Document Extraction] (backend/app/services/document/extractor.py)
+[2. Document Text Extraction] (backend/app/services/document/extractor.py)
        │
        ▼
-[3. Text Normalization & Chunking] (backend/app/services/nlp/preprocessor.py)
+[3. Text Preprocessing & Chunking] (backend/app/services/nlp/preprocessor.py)
        │
        ▼
-[4. Hybrid Similarity Analysis] (backend/app/services/plagiarism/detector.py)
-  ├── Semantic Similarity (Dense Vector Embeddings)
-  └── Lexical Similarity (Jaccard / N-Gram Overlap)
+[4. Multi-Modal Similarity Engine]
+  ├── Semantic Similarity: all-MiniLM-L6-v2 embeddings & cosine similarity (backend/app/services/nlp/semantic.py)
+  └── Lexical Similarity: TF-IDF n-grams & word containment (backend/app/services/plagiarism/lexical.py)
        │
        ▼
-[5. Report Generation & Local Storage] (backend/app/services/storage/local_storage.py)
+[5. Calibrated Hybrid Scoring & Match Extraction] (backend/app/services/plagiarism/detector.py)
+       │
+       ▼
+[6. Report Generation & Local Storage] (backend/app/services/plagiarism/service.py)
        │
        ▼
 Persisted JSON Report (backend/data/reports/analysis_<id>.json)
 ```
 
-1. **Document Ingestion & Validation**
-   - Validates file size, extension, and content headers for `.txt`, `.pdf`, `.docx`.
-   - Sanitizes untrusted user filenames to prevent directory traversal and injection.
+### Stage Details
 
-2. **Document Extraction**
-   - Plain text decoding for `.txt`.
-   - Multi-format extraction engines for `.pdf` and `.docx` scheduled for the upcoming NLP engine phase.
+1. **Document Ingestion & Validation (`file_validation.py`)**
+   - Strips directory traversal patterns (`../`, `..\`), controls characters, and guards against Windows reserved device names (`CON`, `PRN`, etc.).
+   - Verifies file size against configured limit (default: 15 MB).
+   - Validates content headers (`%PDF-` for PDF, `PK\x03\x04` for DOCX).
 
-3. **Text Preprocessing & Chunking**
-   - Normalizes whitespace, casing, and irregular characters.
-   - Chunks lengthy documents into overlapping windows to detect localized plagiarism passages.
+2. **Document Extraction (`extractor.py`)**
+   - Extracts plain text from `.txt`, `.pdf`, and `.docx` without modifying source files.
+   - Throws clear exceptions (`DocumentEmptyError`, `DocumentExtractionError`, `UnsupportedFormatError`) with descriptive HTTP error codes.
 
-4. **Hybrid Plagiarism Scoring**
-   - Calculates lexical similarity for verbatim phrase copying.
-   - Calculates semantic similarity for paraphrased or rewritten content.
-   - Blends signals into a single calibrated similarity score between 0.0 and 1.0.
+3. **Preprocessing & Sentence Windowing (`preprocessor.py`)**
+   - Produces clean semantic text and normalized lexical text.
+   - Groups sentences into overlapping windows (~50 words target, 1 sentence overlap) encapsulated in `TextChunk` dataclasses with character offset tracking.
 
-5. **Local Report Generation**
-   - Produces structured, validated `AnalysisResult` JSON objects with fine-grained match snippets.
-   - Persists analysis artifacts directly to local disk for retrieval.
+4. **Multi-Modal Similarity Analysis**
+   - **Semantic Similarity (`semantic.py`):** Calculates chunk-level dense vector representations using `all-MiniLM-L6-v2`. Uses matrix dot product for efficient batch cosine similarity.
+   - **Lexical Similarity (`lexical.py`):** Calculates whole-document TF-IDF cosine similarity and chunk-level n-gram containment to capture verbatim or lightly modified phrasing.
+
+5. **Hybrid Scoring & Passage Matching (`detector.py`)**
+   - Combines semantic and lexical scores using configurable weights:
+     $$\text{Hybrid Score} = (w_{\text{sem}} \times \text{Semantic}) + (w_{\text{lex}} \times \text{Lexical})$$
+     *(Defaults: $w_{\text{sem}} = 0.60$, $w_{\text{lex}} = 0.40$, scaled to 0.0–100.0%).*
+   - Categorizes score into objective ranges (Very Low, Low, Moderate, High, Very High).
+   - Identifies candidate matches exceeding threshold (default: 50.0%), tags match type (`"semantic"`, `"lexical"`, or `"hybrid"`), deduplicates overlapping matches, and retains Top-K passages.
+
+6. **Orchestration & Reporting (`service.py`)**
+   - Coordinates the pipeline, caches reference document representations in memory during runtime, guards against self-comparison, and persists the resulting `AnalysisResult` as a JSON report.

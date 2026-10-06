@@ -175,5 +175,62 @@
    - Verified live FastAPI startup and `GET /api/v1/health` returning HTTP 200.
 
 7. **Git Checkpoint:**
-   - Commit: `refactor: remove mongodb and simplify storage`
+   - Commit: `refactor: remove mongodb and simplify storage` (`da04687`)
    - Tag: `phase-3-complete`
+
+---
+
+## Phase 4: Core Plagiarism & Similarity Detection Engine
+
+- **Date:** 2026-10-06
+- **Scope:** Implementation of the complete, functional plagiarism detection engine across multi-format document extraction, text normalization and chunking, dense semantic similarity embeddings, TF-IDF and n-gram lexical analysis, calibrated hybrid scoring, match passage deduplication, reference corpus management, and FastAPI REST endpoints.
+
+### Key Technical Decisions & Implementation
+1. **Dependencies Installed & Managed:**
+   - `python-multipart>=0.0.20`: FastAPI form-data file upload support.
+   - `pypdf>=5.0.0`: Lightweight and robust page-by-page PDF text extraction.
+   - `python-docx>=1.1.0`: Paragraph and table text extraction from DOCX documents.
+   - `scikit-learn>=1.5.0`: TF-IDF vectorization and cosine similarity.
+   - `sentence-transformers>=3.0.0` & `torch`: Dense vector embedding model (`all-MiniLM-L6-v2`).
+
+2. **Document Extraction Engine (`DocumentExtractor`):**
+   - Implemented real extractors for `.txt` (UTF-8 with Latin-1 fallback), `.pdf` (via `pypdf.PdfReader`), and `.docx` (via `docx.Document`).
+   - Clean, descriptive exception handling: `DocumentEmptyError`, `DocumentExtractionError`, and `UnsupportedFormatError`.
+   - Leaves source files unchanged.
+
+3. **Text Preprocessing & Sentence Chunking (`TextPreprocessor`):**
+   - Preserves casing and syntactic structures for semantic embeddings while generating clean normalized lexical representations.
+   - Segmented documents into overlapping sentence windows (~50 target words, 1 sentence overlap) encapsulated in `TextChunk` dataclasses with character offset bounds.
+
+4. **Dense Semantic Similarity Engine (`SemanticSimilarityEngine`):**
+   - Loaded `all-MiniLM-L6-v2` as an in-memory singleton for fast reuse across requests.
+   - Normalized 384-dimensional dense vectors to compute pairwise cosine similarities via matrix multiplication.
+
+5. **Lexical Similarity Engine (`LexicalSimilarityEngine`):**
+   - Whole-document sublinear TF-IDF cosine similarity across word 1-3 grams.
+   - Localized 3-gram containment and unigram Jaccard similarity for chunk-level phrase matching.
+
+6. **Calibrated Hybrid Scoring & Classification (`PlagiarismDetector`):**
+   - Weighted blend: `(0.60 * Semantic) + (0.40 * Lexical)` clamped to 0.0–100.0%.
+   - Configurable classification categories: Very Low (0-20), Low (21-40), Moderate (41-60), High (61-80), Very High (81-100).
+   - Candidate match extraction above threshold with match type tagging (`"semantic"`, `"lexical"`, `"hybrid"`) and overlapping match deduplication.
+
+7. **Reference Corpus & Pipeline Orchestration (`PlagiarismAnalysisService`):**
+   - Managed local reference corpus in `backend/data/reference_documents/`.
+   - In-memory runtime caching of reference document chunks and embeddings based on file modification timestamps.
+   - Prevents submitted documents from comparing against themselves.
+
+8. **FastAPI Endpoints Implemented:**
+   - `POST /api/v1/analyze`: Upload file, extract, compare against corpus, and return structured analysis report.
+   - `GET /api/v1/analysis/{analysis_id}`: Retrieve persisted JSON analysis report.
+   - `POST /api/v1/references`: Upload and validate a new reference document.
+   - `GET /api/v1/references`: List reference documents in the corpus.
+   - `DELETE /api/v1/references/{filename}`: Delete a reference document and clear its cache.
+
+9. **Testing & Verification:**
+   - 63 automated unit and integration tests passing covering extraction, preprocessing, lexical matching, semantic embeddings, hybrid scoring, match detection, and API endpoints.
+   - Manual end-to-end verification executed across TXT, PDF, DOCX, exact copy, paraphrase, and unrelated texts.
+
+10. **Git Checkpoint:**
+    - Commit: `feat: implement copycatch plagiarism detection engine`
+    - Tag: `phase-4-complete`
