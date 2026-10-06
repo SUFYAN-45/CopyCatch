@@ -28,3 +28,11 @@ coverage/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Local storage and uploaded data
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/data/reference_documents/*
+!backend/data/reference_documents/.gitkeep
+backend/data/reports/*
+!backend/data/reports/.gitkeep

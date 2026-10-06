@@ -8,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
-from app.core.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +16,16 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown lifecycle events."""
     logger.info("Starting up CopyCatch backend...")
-    if settings.is_mongodb_configured:
-        try:
-            db_manager.connect()
-        except Exception as err:
-            logger.error("MongoDB connection failed on application startup: %s", err)
-            raise
-    else:
-        logger.info("MongoDB URI is not configured. Backend starting in unconfigured database mode.")
+    # Ensure local storage directories exist
+    settings.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    settings.REFERENCE_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    settings.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Local storage directories verified at: %s", settings.DATA_DIR)
 
     yield
 
     logger.info("Shutting down CopyCatch backend...")
-    db_manager.close()
 
 
 def create_application() -> FastAPI:

@@ -2,43 +2,48 @@
 
 An intelligent plagiarism detection platform powered by semantic and lexical analysis.
 
-Phase 2 complete — MongoDB Foundation.
+Phase 3 complete — MongoDB Removed & Local File Storage Foundation.
 
 See [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for current status and architecture details.
 
 ---
 
-## Database Overview (Beginner Guide)
+## Architecture & Storage Overview
 
-### What MongoDB is
-MongoDB is the NoSQL document database used by CopyCatch to store and manage application data (such as future user accounts, reference documents, and analysis records).
+### Mini-Project Direction
+CopyCatch is optimized for fast mini-project development. To accelerate delivery of the core plagiarism-detection engine without operational friction:
+- **MongoDB and MongoDB Atlas have been completely removed.**
+- **No external database is required** (no Supabase, PostgreSQL, SQLite, or Firebase).
+- **Persistence uses lightweight local file storage** under `backend/data/`:
+  - `uploads/`: Stores submitted files during analysis.
+  - `reference_documents/`: Stores reference corpus documents against which inputs are compared.
+  - `reports/`: Stores analysis outcomes as lightweight JSON files (`analysis_<id>.json`).
 
-### What MongoDB Atlas is
-MongoDB Atlas is the official fully-managed cloud database service for MongoDB. CopyCatch uses MongoDB Atlas for development so that developers do not need to install, configure, or run MongoDB Server locally on their machines.
-
-### Why CopyCatch uses it
-It provides reliable, persistent cloud storage accessible via a secure connection string, keeping development lightweight and seamless across environments.
-
-### Current Phase 2 Scope
-Phase 2 establishes only the core **database infrastructure** (client lifecycle, connection verification, and health check endpoints). Application-specific collections (users, documents, plagiarism reports, etc.) will be introduced in subsequent phases.
+### Next Major Phase
+The next priority is building the actual **CopyCatch NLP and Plagiarism Detection Engine** (text extraction, normalization, chunking, semantic & lexical similarity, and hybrid scoring).
 
 ---
 
 ## Running the Backend (Local Development)
 
-1. Activate your virtual environment and configure your local `.env`:
+1. Navigate to the backend directory and activate your virtual environment:
    ```bash
    cd backend
-   copy .env.example .env
-   # Add your MongoDB Atlas connection string to MONGODB_URI in backend/.env
+   .\.venv\Scripts\activate
    ```
 
-2. Start the FastAPI development server:
+2. (Optional) Copy `.env.example` to `.env`:
    ```bash
-   .\.venv\Scripts\uvicorn.exe app.main:app --reload
+   copy .env.example .env
+   ```
+   *(No database credentials or external service tokens are needed!)*
+
+3. Start the FastAPI development server:
+   ```bash
+   uvicorn app.main:app --reload
    ```
 
-3. Endpoints & Documentation:
+4. Endpoints & Documentation:
    - Interactive Swagger UI: `http://127.0.0.1:8000/docs`
+   - ReDoc UI: `http://127.0.0.1:8000/redoc`
    - Service Health Check: `http://127.0.0.1:8000/api/v1/health`
-   - Database Health Check: `http://127.0.0.1:8000/api/v1/health/database`

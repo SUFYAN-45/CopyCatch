@@ -1,69 +1,90 @@
 # CopyCatch — System Architecture
 
-> **Notice:** This document outlines the intended clean-slate architecture for CopyCatch. These systems and components are architectural specifications and are **not implemented yet**.
+> **Notice:** CopyCatch is intentionally designed and optimized as a focused **mini project**. All external database systems (including MongoDB and MongoDB Atlas) have been completely removed to prioritize fast, frictionless delivery of the actual plagiarism-detection product.
 
 ---
 
 ## 1. High-Level Technology Stack
 
 ### Frontend
-- **Framework & Core:** React, TypeScript, Vite
+- **Framework & Core:** React, TypeScript, Vite *(Scheduled for future UI phase)*
 - **Styling & Components:** Tailwind CSS, shadcn/ui
-- **Motion & 3D Experience:** Framer Motion, React Three Fiber, Drei
 
 ### Backend
-- **Core Runtime & API:** Python, FastAPI
-- **Architecture:** Modular, layered service architecture (routers, services, repositories, schemas)
+- **Core Runtime & API:** Python 3.13, FastAPI
+- **Architecture:** Lightweight service-oriented architecture with clean boundaries:
+  - `api/`: API router aggregation and HTTP endpoints (`/health`).
+  - `core/`: Configuration via Pydantic Settings (`app/core/config.py`).
+  - `models/`: Internal domain models.
+  - `schemas/`: Pydantic schemas for data validation (`DocumentMetadata`, `Match`, `AnalysisResult`).
+  - `services/`: Dedicated business logic divided into:
+    - `document/`: File ingestion and text extraction (`.txt`, `.pdf`, `.docx`).
+    - `nlp/`: Text normalization and token/sentence chunking.
+    - `plagiarism/`: Semantic, lexical, and hybrid scoring engine.
+    - `storage/`: Lightweight local filesystem storage.
+  - `utils/`: Utilities for filename sanitization, safe validation, and security guards.
 
-### NLP & AI Pipeline
-- **Embedding Models:** Sentence Transformers (`all-mpnet-base-v2`)
-- **Machine Learning & Classical NLP:** scikit-learn
-- **Text Preprocessing & Linguistic Analysis:** NLTK / spaCy (where appropriate)
+### Storage & Persistence
+- **Storage Type:** Lightweight Local Filesystem Storage (`backend/data/`).
+- **External Database:** **None.** (No MongoDB, Supabase, PostgreSQL, SQLite, or Firebase required).
+- **Directory Layout:**
+  - `backend/data/uploads/`: Stores submitted files for analysis (git-ignored).
+  - `backend/data/reference_documents/`: Stores reference corpus documents (git-ignored).
+  - `backend/data/reports/`: Stores analysis outcomes as standalone JSON files (`analysis_<id>.json`, git-ignored).
+- **Service Layer:** `LocalStorageService` (`app/services/storage/local_storage.py`) providing a clean, replaceable file management layer.
 
-### Database & Persistence
-- **Database:** MongoDB (MongoDB Atlas cloud deployment)
-- **Driver:** Official Python MongoDB driver (`pymongo` with `dnspython`)
-- **Connection Lifecycle:** Managed singleton `DatabaseManager` tied to FastAPI lifespan
-- **Data Access Pattern:** `BaseRepository` pattern (`backend/app/repositories/base.py`)
-
-### Authentication & Authorization
-- **Security Mechanism:** JSON Web Tokens (JWT) with secure password hashing (e.g., Argon2 / bcrypt)
-- **Role-Based Access Control (RBAC):**
-  - Student
-  - Faculty
-  - Admin
+### Upcoming NLP & Plagiarism Detection Engine
+- **Embedding Models:** Sentence Transformers (`all-mpnet-base-v2`) for dense semantic embeddings.
+- **Lexical Matching:** N-gram overlap, Jaccard similarity, and TF-IDF vectors via scikit-learn.
+- **Scoring Aggregator:** Calibrated hybrid scoring combining semantic and lexical similarities.
 
 ---
 
-## 2. Planned Pipeline & Subsystems (Future Implementation)
+## 2. Planned Pipeline & Subsystems
 
-The following capabilities are specified for future phases:
+The core CopyCatch detection workflow operates across five explicit service boundaries:
 
-1. **Document Ingestion & Extraction**
-   - Text extraction across varied file formats (PDF, DOCX, TXT).
-   - Sanitization and encoding normalization.
+```text
+Uploaded File (.txt, .pdf, .docx)
+       │
+       ▼
+[1. File Validation & Sanitization] (backend/app/utils/file_validation.py)
+       │
+       ▼
+[2. Document Extraction] (backend/app/services/document/extractor.py)
+       │
+       ▼
+[3. Text Normalization & Chunking] (backend/app/services/nlp/preprocessor.py)
+       │
+       ▼
+[4. Hybrid Similarity Analysis] (backend/app/services/plagiarism/detector.py)
+  ├── Semantic Similarity (Dense Vector Embeddings)
+  └── Lexical Similarity (Jaccard / N-Gram Overlap)
+       │
+       ▼
+[5. Report Generation & Local Storage] (backend/app/services/storage/local_storage.py)
+       │
+       ▼
+Persisted JSON Report (backend/data/reports/analysis_<id>.json)
+```
 
-2. **Chunking & Preprocessing**
-   - Context-preserving token and sentence chunking strategies.
-   - Stopword handling, lemmatization, and n-gram extraction where suitable.
+1. **Document Ingestion & Validation**
+   - Validates file size, extension, and content headers for `.txt`, `.pdf`, `.docx`.
+   - Sanitizes untrusted user filenames to prevent directory traversal and injection.
 
-3. **Multi-Stage Detection Engine**
-   - **Semantic Similarity:** Dense vector embeddings generated via `all-mpnet-base-v2` and cosine similarity analysis.
-   - **Lexical Matching:** TF-IDF, character/token n-gram overlap, and Jaccard similarity metrics via scikit-learn.
-   - **Exact Phrase Matching:** Substring matching and Karp-Rabin / rolling hash algorithms for identical passage identification.
-   - **Hybrid Scoring:** Weighted algorithmic aggregation blending lexical, exact, and semantic signals into confidence-calibrated similarity scores.
+2. **Document Extraction**
+   - Plain text decoding for `.txt`.
+   - Multi-format extraction engines for `.pdf` and `.docx` scheduled for the upcoming NLP engine phase.
 
-4. **Reference Corpus & Storage**
-   - Persistent index of internal institutional documents, submitted academic works, and indexed reference papers.
+3. **Text Preprocessing & Chunking**
+   - Normalizes whitespace, casing, and irregular characters.
+   - Chunks lengthy documents into overlapping windows to detect localized plagiarism passages.
 
-5. **Source Attribution & Evidence Alignment**
-   - Granular sentence- and paragraph-level source attribution.
-   - Side-by-side textual alignment and highlight visualizer.
+4. **Hybrid Plagiarism Scoring**
+   - Calculates lexical similarity for verbatim phrase copying.
+   - Calculates semantic similarity for paraphrased or rewritten content.
+   - Blends signals into a single calibrated similarity score between 0.0 and 1.0.
 
-6. **Reporting & Analytics**
-   - Comprehensive plagiarism breakdown reports with similarity indices and source links.
-   - Exportable audit logs and academic integrity summaries.
-
-7. **Research Evaluation**
-   - Evaluation harness for benchmarking against standard plagiarism detection datasets.
-   - Precision, recall, and F1-score evaluation metrics across paraphrase variations.
+5. **Local Report Generation**
+   - Produces structured, validated `AnalysisResult` JSON objects with fine-grained match snippets.
+   - Persists analysis artifacts directly to local disk for retrieval.

@@ -15,3 +15,4 @@ The following mandatory rules govern the development, lifecycle, and engineering
 11. **Do not introduce unnecessary dependencies:** Keep dependencies lightweight, justified, and focused on core requirements.
 12. **Do not create fake/mock functionality unless explicitly requested:** Build robust, functional, and verifiable systems according to specifications.
 13. **Preserve research reproducibility and document important architectural decisions:** Maintain deterministic workflows, evaluation records, and clear technical documentation.
+14. **Mini-project optimization & no external databases:** Maintain a lightweight, fast-moving project structure. Do not introduce external database services (MongoDB, Supabase, PostgreSQL, SQLite, Firebase, etc.). Use local file storage (`backend/data/`) for persistence.

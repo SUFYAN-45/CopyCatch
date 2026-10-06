@@ -122,5 +122,58 @@
    - Terminated live server process cleanly.
 
 7. **Git Checkpoint:**
-   - Commit: `feat: establish MongoDB database foundation`
+   - Commit: `feat: establish MongoDB database foundation` (`f258235`)
    - Tag: `phase-2-complete`
+
+---
+
+## Phase 3: MongoDB Removal & Local Storage Simplification
+
+- **Date:** 2026-10-06
+- **Scope:** Complete removal of MongoDB, MongoDB Atlas, and PyMongo dependencies; transition to lightweight local file storage (`backend/data/`); implementation of document/analysis Pydantic schemas; safe file validation and filename sanitization utilities; establishment of modular service boundaries for the upcoming NLP engine.
+
+### Key Technical Decisions & Implementation
+1. **Complete MongoDB Removal:**
+   - Removed `pymongo` and `dnspython` from `backend/requirements.txt` and uninstalled them from `backend/.venv`.
+   - Removed `backend/app/core/database.py` and `backend/app/repositories/` package.
+   - Removed `/health/database` endpoint from `backend/app/api/routes/health.py`, retaining clean `/health`.
+   - Removed MongoDB configuration variables (`MONGODB_URI`, `MONGODB_DATABASE`) from `backend/app/core/config.py` and `.env.example` templates.
+   - Simplified FastAPI lifespan in `backend/app/main.py` to ensure local storage directories exist upon boot without database connections.
+
+2. **Lightweight Local Storage:**
+   - Created directory structure in `backend/data/`:
+     - `uploads/`: Stores uploaded documents during analysis.
+     - `reference_documents/`: Stores reference corpus documents.
+     - `reports/`: Stores analysis outcomes as standalone JSON files (`analysis_<id>.json`).
+   - Configured root `.gitignore` to track directory structures via `.gitkeep` while ignoring all stored files.
+   - Implemented `LocalStorageService` (`backend/app/services/storage/local_storage.py`) providing simple, replaceable file handling and report JSON persistence.
+
+3. **Core Engine Service Boundaries Prepared:**
+   - Restructured backend packages:
+     - `backend/app/services/document/`: `DocumentExtractor` with extraction boundaries for `.txt`, `.pdf`, `.docx`.
+     - `backend/app/services/nlp/`: `TextPreprocessor` for text normalization and token chunking.
+     - `backend/app/services/plagiarism/`: `PlagiarismDetector` for lexical similarity, hybrid scoring, and report generation.
+     - `backend/app/services/storage/`: `LocalStorageService`.
+
+4. **Document & Analysis Schemas:**
+   - Created Pydantic schemas in `backend/app/schemas/`:
+     - `DocumentMetadata`: `document_id`, `filename`, `file_type`, `size`, `created_at`.
+     - `MatchLocation`: `start_char`, `end_char`, `page`, `paragraph`, `extra`.
+     - `Match`: `source`, `matched_text`, `similarity_score`, `location`.
+     - `AnalysisResult`: `analysis_id`, `document_id`, `overall_similarity`, `semantic_similarity`, `lexical_similarity`, `matches`, `analyzed_at`.
+
+5. **Safe File Validation Utilities:**
+   - Implemented in `backend/app/utils/file_validation.py`:
+     - `sanitize_filename`: Strips path traversal (`../`, `..\`), cleans invalid characters, guards against Windows reserved device names, and safely falls back for empty names.
+     - `is_supported_extension`: Validates allowed extensions (`.txt`, `.pdf`, `.docx`, case-insensitive).
+     - `validate_uploaded_file`: Validates size limits, extension, MIME types, and binary headers (`%PDF-`, `PK\x03\x04`).
+
+6. **Testing & Verification:**
+   - Removed old MongoDB-specific tests (`test_database.py`).
+   - Added comprehensive tests across `test_config.py`, `test_health.py`, `test_file_validation.py`, `test_schemas.py`, and `test_storage.py`.
+   - All 32 automated tests passed cleanly.
+   - Verified live FastAPI startup and `GET /api/v1/health` returning HTTP 200.
+
+7. **Git Checkpoint:**
+   - Commit: `refactor: remove mongodb and simplify storage`
+   - Tag: `phase-3-complete`

@@ -1,9 +1,13 @@
 """Application configuration using Pydantic Settings."""
 
 import json
-from typing import List, Union
+from pathlib import Path
+from typing import List, Set, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Base backend directory: .../backend
+BACKEND_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -19,9 +23,15 @@ class Settings(BaseSettings):
         "http://localhost:3000",
     ]
 
-    # Database Configuration (MongoDB Atlas)
-    MONGODB_URI: str = ""
-    MONGODB_DATABASE: str = "copycatch"
+    # Local Storage Configuration
+    DATA_DIR: Path = BACKEND_BASE_DIR / "data"
+    UPLOADS_DIR: Path = BACKEND_BASE_DIR / "data" / "uploads"
+    REFERENCE_DOCS_DIR: Path = BACKEND_BASE_DIR / "data" / "reference_documents"
+    REPORTS_DIR: Path = BACKEND_BASE_DIR / "data" / "reports"
+
+    # Upload & File Validation Settings
+    MAX_UPLOAD_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB
+    ALLOWED_EXTENSIONS: Set[str] = {".txt", ".pdf", ".docx"}
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
@@ -42,11 +52,6 @@ class Settings(BaseSettings):
                     pass
             return [item.strip() for item in v.split(",") if item.strip()]
         return v
-
-    @property
-    def is_mongodb_configured(self) -> bool:
-        """Check whether a MongoDB URI has been provided."""
-        return bool(self.MONGODB_URI and self.MONGODB_URI.strip())
 
 
 settings = Settings()
