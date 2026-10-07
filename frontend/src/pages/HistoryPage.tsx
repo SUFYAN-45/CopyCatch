@@ -1,29 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, ExternalLink, RefreshCw, AlertCircle, FileSearch, Clock, Trash2 } from 'lucide-react';
+import { 
+  BookOpen, 
+  ExternalLink, 
+  RefreshCw, 
+  FileSearch, 
+  Clock, 
+  Trash2, 
+  FileText,
+  ShieldAlert
+} from 'lucide-react';
 import type { AnalysisResult } from '../services/api';
+import { getScoreColor } from '../components/ui/ScoreRing';
 
 const STORAGE_KEY = 'copycatch_history';
 const MAX_HISTORY = 50;
 
-/* History is stored in localStorage since the backend doesn't provide a list endpoint for reports */
-export function recordHistory(result: AnalysisResult) {
-  try {
-    const existing: HistoryEntry[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-    const entry: HistoryEntry = {
-      analysis_id: result.analysis_id,
-      filename: result.document?.filename ?? 'Unknown',
-      overall_similarity: result.overall_similarity,
-      classification: result.classification,
-      analyzed_at: result.analyzed_at,
-    };
-    const updated = [entry, ...existing.filter((e) => e.analysis_id !== entry.analysis_id)].slice(0, MAX_HISTORY);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch { /* non-critical */ }
-}
-
-interface HistoryEntry {
+export interface HistoryEntry {
   analysis_id: string;
   filename: string;
   overall_similarity: number;
@@ -31,41 +25,70 @@ interface HistoryEntry {
   analyzed_at: string;
 }
 
-function classColor(c: string): string {
-  if (c.startsWith('Very High')) return 'text-red-400';
-  if (c.startsWith('High'))      return 'text-amber-400';
-  if (c.startsWith('Moderate'))  return 'text-yellow-400';
-  if (c.startsWith('Low'))       return 'text-indigo-400';
-  return 'text-emerald-400';
+export function recordHistory(result: AnalysisResult) {
+  try {
+    const existing: HistoryEntry[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+    const entry: HistoryEntry = {
+      analysis_id: result.analysis_id,
+      filename: result.document?.filename ?? 'Unknown Document',
+      overall_similarity: result.overall_similarity,
+      classification: result.classification,
+      analyzed_at: result.analyzed_at,
+    };
+    const updated = [entry, ...existing.filter((e) => e.analysis_id !== entry.analysis_id)].slice(0, MAX_HISTORY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    // Non-critical local storage fallback
+  }
 }
 
-function ScorePill({ score }: { score: number }) {
-  const color = score >= 75 ? 'bg-red-500/15 text-red-400'
-    : score >= 50 ? 'bg-amber-500/15 text-amber-400'
-    : score >= 25 ? 'bg-indigo-500/15 text-indigo-400'
-    : 'bg-emerald-500/15 text-emerald-400';
+function HistoryScoreBadge({ score }: { score: number }) {
+  const { hex, bgClass, borderClass } = getScoreColor(score);
   return (
-    <span className={`text-xs font-bold rounded-full px-2.5 py-1 ${color}`}>
-      {score.toFixed(1)}%
+    <span 
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold border ${bgClass} ${borderClass}`}
+      style={{ color: hex }}
+    >
+      {score.toFixed(1)}% Match
+    </span>
+  );
+}
+
+function HistoryClassPill({ label }: { label: string }) {
+  let badgeStyle = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+  if (label.includes('Very High')) badgeStyle = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+  else if (label.includes('High')) badgeStyle = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+  else if (label.includes('Moderate')) badgeStyle = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20';
+  else if (label.includes('Low')) badgeStyle = 'text-sky-400 bg-sky-500/10 border-sky-500/20';
+
+  return (
+    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${badgeStyle}`}>
+      {label}
     </span>
   );
 }
 
 export default function HistoryPage() {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
 
-  const load = () => {
+  const loadHistory = () => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as HistoryEntry[];
       setEntries(raw);
-    } catch { setEntries([]); }
+    } catch {
+      setEntries([]);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const handleClear = () => {
     localStorage.removeItem(STORAGE_KEY);
     setEntries([]);
+    setConfirmClear(false);
   };
 
   const handleRemove = (id: string) => {
@@ -74,126 +97,200 @@ export default function HistoryPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
-  const FMT_DATE = (s: string) =>
-    new Date(s).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const formatDate = (s: string) =>
+    new Date(s).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
 
   return (
-    <div className="min-h-screen bg-grid pt-28 pb-20 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10 flex items-start justify-between gap-4"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+    <div className="min-h-[calc(100vh-4rem)] bg-grid-pattern py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-6">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
+                Local Archive
+              </span>
+              <span className="text-xs text-zinc-400 font-mono">
+                {entries.length} Session{entries.length !== 1 ? 's' : ''} Saved
+              </span>
+            </div>
+            <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
               <BookOpen className="size-7 text-indigo-400" />
-              Analysis History
+              <span>Analysis History</span>
             </h1>
-            <p className="text-zinc-400 text-sm">Your previous analysis sessions, stored locally in your browser.</p>
+            <p className="text-xs sm:text-sm text-zinc-400 max-w-xl">
+              Inspect past similarity audits executed on this workstation. Reports remain accessible locally until cleared.
+            </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+
+          <div className="flex items-center gap-2.5">
             <button
               id="refresh-history-btn"
-              onClick={load}
-              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-xl hover:bg-white/5"
-              aria-label="Refresh history"
+              type="button"
+              onClick={loadHistory}
+              className="p-2.5 rounded-xl text-zinc-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] transition-colors"
+              aria-label="Refresh history list"
+              title="Refresh history"
             >
               <RefreshCw className="size-4" />
             </button>
+
             {entries.length > 0 && (
-              <button
-                id="clear-history-btn"
-                onClick={handleClear}
-                className="text-xs text-zinc-500 hover:text-red-400 transition-colors border border-white/8 hover:border-red-500/30 px-3 py-2 rounded-xl"
-              >
-                Clear All
-              </button>
+              confirmClear ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/20 border border-rose-500/30 hover:bg-rose-500/30 transition-colors"
+                  >
+                    Confirm Clear All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(false)}
+                    className="px-3 py-1.5 rounded-xl text-xs text-zinc-400 hover:text-zinc-200 bg-white/[0.04] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  id="clear-history-btn"
+                  type="button"
+                  onClick={() => setConfirmClear(true)}
+                  className="px-3 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-rose-400 bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )
             )}
           </div>
-        </motion.div>
+        </div>
 
+        {/* Empty State */}
         {entries.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-24 rounded-2xl border border-dashed border-white/8"
-          >
-            <Clock className="size-12 mx-auto mb-4 text-zinc-700" />
-            <p className="font-medium text-zinc-500 mb-2">No history yet</p>
-            <p className="text-sm text-zinc-600 mb-6">Your past analyses will appear here after you run one.</p>
-            <Link
-              to="/analyze"
-              id="history-to-analyze-cta"
-              className="inline-flex items-center gap-2 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              <FileSearch className="size-4" /> Go to Analyzer
-            </Link>
-          </motion.div>
-        )}
-
-        <AnimatePresence>
-          <div className="space-y-3">
-            {entries.map((entry, i) => (
-              <motion.div
-                key={entry.analysis_id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ delay: i * 0.04 }}
-                className="group rounded-2xl border border-white/8 bg-zinc-900/60 hover:border-white/12 hover:bg-zinc-900/80 transition-all duration-200"
+          <div className="surface-card rounded-2xl border border-dashed border-white/[0.1] p-16 text-center space-y-4">
+            <div className="size-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto">
+              <Clock className="size-7 text-zinc-600" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-white">No Analysis History Yet</h3>
+              <p className="text-xs sm:text-sm text-zinc-400 max-w-sm mx-auto">
+                Documents you analyze will automatically appear in this local archive so you can revisit forensic match reports anytime.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Link
+                to="/analyze"
+                id="history-to-analyze-cta"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20"
               >
-                <div className="flex items-center gap-4 px-5 py-4">
-                  <div className="size-10 rounded-xl bg-indigo-600/15 flex items-center justify-center shrink-0">
-                    <FileSearch className="size-5 text-indigo-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-zinc-200 truncate">{entry.filename}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{FMT_DATE(entry.analyzed_at)}</p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-xs font-medium hidden sm:block ${classColor(entry.classification)}`}>
-                      {entry.classification}
-                    </span>
-                    <ScorePill score={entry.overall_similarity} />
-                    <Link
-                      to={`/results/${entry.analysis_id}`}
-                      id={`view-result-${entry.analysis_id.slice(0, 8)}`}
-                      className="p-1.5 text-zinc-600 hover:text-indigo-400 transition-colors"
-                      aria-label="View result"
-                    >
-                      <ExternalLink className="size-4" />
-                    </Link>
-                    <button
-                      id={`remove-history-${entry.analysis_id.slice(0, 8)}`}
-                      onClick={() => handleRemove(entry.analysis_id)}
-                      className="p-1.5 text-zinc-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                      aria-label="Remove entry"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                </div>
-                {/* Mini progress */}
-                <div className="px-5 pb-4">
-                  <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${entry.overall_similarity >= 75 ? 'bg-red-500' : entry.overall_similarity >= 50 ? 'bg-amber-500' : entry.overall_similarity >= 25 ? 'bg-indigo-500' : 'bg-emerald-500'}`}
-                      style={{ width: `${entry.overall_similarity}%` }}
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                <FileSearch className="size-4" />
+                <span>Open Analysis Workspace</span>
+              </Link>
+            </div>
           </div>
-        </AnimatePresence>
-
-        {entries.length > 0 && (
-          <p className="mt-8 text-center text-xs text-zinc-700">
-            <AlertCircle className="size-3 inline mr-1" />
-            History is stored locally and may be lost if you clear your browser data.
-          </p>
         )}
+
+        {/* Entries List */}
+        {entries.length > 0 && (
+          <div className="space-y-3">
+            <AnimatePresence>
+              {entries.map((entry, index) => {
+                const { hex } = getScoreColor(entry.overall_similarity);
+                return (
+                  <motion.div
+                    key={entry.analysis_id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="surface-card rounded-2xl border border-white/[0.07] hover:border-white/[0.12] transition-colors overflow-hidden group"
+                  >
+                    <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      
+                      {/* Document Details */}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                          <FileText className="size-5 text-indigo-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm sm:text-base font-semibold text-white truncate">
+                            {entry.filename}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 font-mono mt-0.5">
+                            <span>{formatDate(entry.analyzed_at)}</span>
+                            <span>•</span>
+                            <span className="text-zinc-400">ID: {entry.analysis_id.slice(0, 8)}…</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Score & Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
+                        <div className="flex items-center gap-2.5">
+                          <HistoryClassPill label={entry.classification} />
+                          <HistoryScoreBadge score={entry.overall_similarity} />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 ml-2">
+                          <Link
+                            to={`/results/${entry.analysis_id}`}
+                            id={`view-result-${entry.analysis_id.slice(0, 8)}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 transition-colors"
+                            aria-label={`View report for ${entry.filename}`}
+                          >
+                            <span>Report</span>
+                            <ExternalLink className="size-3.5" />
+                          </Link>
+
+                          <button
+                            id={`remove-history-${entry.analysis_id.slice(0, 8)}`}
+                            type="button"
+                            onClick={() => handleRemove(entry.analysis_id)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-70 group-hover:opacity-100"
+                            aria-label={`Delete record for ${entry.filename}`}
+                            title="Delete this history record"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Severity Progress Strip */}
+                    <div className="h-1 bg-white/[0.03]">
+                      <div
+                        className="h-full transition-all duration-300"
+                        style={{
+                          width: `${entry.overall_similarity}%`,
+                          backgroundColor: hex,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Local Storage Privacy Note */}
+        {entries.length > 0 && (
+          <div className="pt-4 text-center">
+            <p className="text-[11px] text-zinc-400 font-mono inline-flex items-center gap-1.5">
+              <ShieldAlert className="size-3.5 text-zinc-400" />
+              <span>History is persisted within your local browser storage. Clearing browser site data will remove these records.</span>
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   );
