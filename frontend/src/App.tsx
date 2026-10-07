@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Navbar } from './components/layout/Navbar';
@@ -10,6 +11,11 @@ import AboutPage from './pages/AboutPage';
 
 function AppRoutes() {
   const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
@@ -27,9 +33,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex flex-col min-h-screen bg-[#090a0f] text-zinc-100">
+      <div className="flex flex-col min-h-screen bg-base text-content">
         <Navbar />
-        <main className="flex-1 pt-16">
+        <main className="flex-1 navbar-offset">
           <AppRoutes />
         </main>
         <Footer />

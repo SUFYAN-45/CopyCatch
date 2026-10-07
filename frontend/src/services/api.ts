@@ -52,7 +52,6 @@ export async function analyzeDocument(
   form.append('file', file);
 
   const { data } = await api.post<AnalysisResult>('/analyze', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => {
       if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
     },
@@ -75,9 +74,7 @@ export async function listReferences(): Promise<ReferenceDoc[]> {
 export async function uploadReference(file: File): Promise<{ message: string; filename: string; size: number }> {
   const form = new FormData();
   form.append('file', file);
-  const { data } = await api.post('/references', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await api.post('/references', form);
   return data;
 }
 

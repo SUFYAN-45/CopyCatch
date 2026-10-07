@@ -2,363 +2,246 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   ArrowRight, 
-  FileSearch, 
+  FileText, 
   Sparkles, 
-  ShieldCheck, 
-  Zap, 
-  BookOpen, 
-  FileText,
-  Layers,
-  CheckCircle2,
-  Database
+  Layers, 
+  FileSearch,
+  BookOpen,
+  Zap,
+  FileCode2,
+  FileType
 } from 'lucide-react';
 import { ScoreRing } from '../components/ui/ScoreRing';
 import { ScoreBar } from '../components/ui/ScoreBar';
-
-const FEATURES = [
-  {
-    icon: Sparkles,
-    title: 'Semantic Understanding',
-    desc: 'Dense 384-dimensional vector embeddings understand conceptual equivalence, complex paraphrases, and context beyond keywords.',
-    tag: 'all-MiniLM-L6-v2',
-  },
-  {
-    icon: Zap,
-    title: 'Hybrid Scoring Engine',
-    desc: 'Calibrated mathematical fusion combines 60% semantic similarity with 40% lexical n-gram containment for optimal precision.',
-    tag: '60/40 Formula',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Multi-Format Support',
-    desc: 'Native ingestion for PDF, DOCX, and TXT files up to 15 MB with robust memory buffers and encoding recovery fallbacks.',
-    tag: 'PDF · DOCX · TXT',
-  },
-  {
-    icon: BookOpen,
-    title: 'Reference Corpus',
-    desc: 'Manage your own indexed reference library. Upload any number of canonical papers to establish an authoritative comparison base.',
-    tag: 'Local Corpus',
-  },
-];
-
-const STEPS = [
-  {
-    step: '01',
-    title: 'Build Reference Library',
-    desc: 'Upload reference papers, articles, or previous student submissions to populate your indexed local corpus.',
-    icon: Database,
-    detail: 'Supports single or batch uploads up to 15 MB per file.',
-  },
-  {
-    step: '02',
-    title: 'Upload Document to Analyze',
-    desc: 'Select or drag-and-drop the target document you need to audit for academic or textual similarity.',
-    icon: FileText,
-    detail: 'Automated format validation and clean text normalization.',
-  },
-  {
-    step: '03',
-    title: 'Understand Matches',
-    desc: 'Explore forensic side-by-side passage comparisons, semantic vs lexical breakdowns, and objective risk classifications.',
-    icon: Layers,
-    detail: 'Ranked passage cards with exact character offsets.',
-  },
-];
+import { PageContainer } from '../components/layout/PageContainer';
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] bg-grid-pattern overflow-hidden">
+    <PageContainer className="p-0 sm:p-0 lg:p-0 xl:p-0" withGrid={false}>
       
-      {/* Subtle background radial ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] bg-radial-gradient pointer-events-none" />
+      {/* Ambient background glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[600px] bg-radial-gradient pointer-events-none" />
 
       {/* ── Hero Section ────────────────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+      <section className="relative pt-12 sm:pt-20 pb-20 lg:pb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-center px-4 sm:px-6 lg:px-8 max-w-[1280px] mx-auto">
           
-          {/* Left Column: Content */}
+          {/* Left Column: Hero Text */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 space-y-6 text-left"
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="lg:col-span-6 space-y-6"
           >
-            {/* Small Category Pill */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300">
-              <span className="size-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              <span>AI-Powered NLP Similarity Engine</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border-medium bg-highlight px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-content-secondary tracking-wide uppercase">
+              <span className="size-1.5 rounded-full bg-accent animate-pulse" />
+              AI-Powered Similarity Analysis
             </div>
 
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold text-white tracking-tight leading-[1.12]">
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-content tracking-tight leading-[1.15]">
               Detect Similarity.<br />
-              <span className="bg-gradient-to-r from-indigo-300 via-indigo-200 to-violet-300 bg-clip-text text-transparent">
-                Understand the Match.
-              </span>
+              Understand the Match.
             </h1>
 
-            {/* Supporting Text */}
-            <p className="text-base sm:text-lg text-zinc-400 leading-relaxed max-w-xl">
-              CopyCatch combines transformer embeddings with TF-IDF lexical n-grams to surface exact phrasing, rewritten passages, and contextual overlap against your indexed corpus.
+            <p className="text-base sm:text-lg text-content-secondary leading-relaxed max-w-lg">
+              Compare your documents against your indexed reference corpus to surface exact phrasing, rewritten passages, and contextual overlap using advanced NLP.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap items-center gap-3.5 pt-2">
+            <div className="flex flex-wrap items-center gap-4 pt-4">
               <Link
                 to="/analyze"
-                id="hero-cta-analyze"
-                className="group inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-xl transition-all shadow-lg shadow-indigo-600/25 border border-indigo-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="group inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span>Start Analyzing</span>
-                <ArrowRight className="size-4 text-indigo-200 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
                 to="/about"
-                id="hero-cta-about"
-                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-zinc-300 bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.1] border border-white/[0.08] rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-content-secondary bg-surface hover:bg-highlight border border-border-subtle hover:border-border-medium rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span>How It Works</span>
               </Link>
             </div>
 
-            {/* Technical Highlights list */}
-            <div className="pt-4 border-t border-white/[0.06] flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-zinc-400 font-mono">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-indigo-400" />
-                Dense MiniLM-L6-v2 Embeddings
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-violet-400" />
-                Sublinear TF-IDF + 3-Grams
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-emerald-400" />
-                100% Offline Local Pipeline
-              </span>
+            <div className="pt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] font-mono text-content-muted">
+              <span className="flex items-center gap-1.5"><FileType className="size-3.5" /> PDF &middot; DOCX &middot; TXT</span>
+              <span className="flex items-center gap-1.5"><Sparkles className="size-3.5" /> Semantic + Lexical</span>
+              <span className="flex items-center gap-1.5"><Zap className="size-3.5" /> Local Processing</span>
             </div>
           </motion.div>
 
-          {/* Right Column: Realistic CopyCatch Analysis Preview Card */}
+          {/* Right Column: Realistic Preview */}
           <motion.div
-            initial={{ opacity: 0, y: 32, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 w-full"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
+            className="lg:col-span-6 w-full relative"
           >
-            <div className="surface-card rounded-2xl border border-white/[0.1] shadow-2xl p-5 sm:p-6 space-y-5">
+            <div className="relative surface-elevated rounded-2xl border border-border-subtle shadow-2xl p-6 space-y-6">
               
-              {/* Document Header in Preview */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                    <FileText className="size-4.5 text-indigo-400" />
+              <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+                    <FileText className="size-5 text-accent" />
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-zinc-100 truncate">
-                        research_paper_draft.docx
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-zinc-400 font-mono">
-                      1.4 MB · 14 Matches Detected
-                    </span>
+                  <div>
+                    <h3 className="font-semibold text-sm text-content">research_paper_draft.docx</h3>
+                    <p className="text-[11px] text-content-muted font-mono">1.4 MB &middot; 14 Matches Detected</p>
                   </div>
                 </div>
-                <div className="shrink-0">
-                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border bg-indigo-500/10 text-indigo-300 border-indigo-500/25">
-                    Moderate Similarity
-                  </span>
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                  Moderate Risk
+                </span>
+              </div>
+
+              <div className="grid grid-cols-12 gap-6 items-center">
+                <div className="col-span-5 flex justify-center">
+                  <ScoreRing score={73.4} size={140} strokeWidth={8} label="Overall Match" />
+                </div>
+                <div className="col-span-7 space-y-4">
+                  <ScoreBar label="Semantic Similarity" value={81.2} helperText="Conceptual" accentColor="purple" delay={0.2} />
+                  <ScoreBar label="Lexical Similarity" value={62.1} helperText="Word Overlap" accentColor="cyan" delay={0.3} />
                 </div>
               </div>
 
-              {/* Score Breakdown Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-[#0b0d14] rounded-xl p-4 border border-white/[0.04]">
-                <div className="sm:col-span-5 flex flex-col items-center justify-center">
-                  <ScoreRing score={49.1} size={130} strokeWidth={8} label="Overall Match" />
+              <div className="rounded-xl border border-border-subtle bg-base overflow-hidden text-xs shadow-sm">
+                <div className="px-4 py-2 border-b border-border-subtle flex justify-between items-center bg-surface">
+                  <span className="font-mono text-[10px] text-content-muted">game_theory_handbook.docx</span>
+                  <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">81.2%</span>
                 </div>
-                <div className="sm:col-span-7 space-y-3.5 pt-2 sm:pt-0">
-                  <ScoreBar 
-                    label="Semantic Similarity" 
-                    value={65.1} 
-                    helperText="Conceptual" 
-                    accentColor="indigo" 
-                    delay={0.2}
-                  />
-                  <ScoreBar 
-                    label="Lexical Similarity" 
-                    value={25.0} 
-                    helperText="Word Overlap" 
-                    accentColor="violet" 
-                    delay={0.3}
-                  />
-                  <div className="pt-1 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                    <span>Formula: 0.60(Sem) + 0.40(Lex)</span>
-                    <span className="text-indigo-300 font-semibold">Score: 49.1%</span>
+                <div className="grid grid-cols-2 divide-x divide-border-subtle">
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20">
+                    <p className="text-[10px] font-mono text-content-muted mb-1">YOUR DOCUMENT</p>
+                    <p className="text-content-secondary font-sans leading-relaxed text-[11px]">An Introduction to Game Theory, Oxford University Press, 2004.</p>
+                  </div>
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20">
+                    <p className="text-[10px] font-mono text-content-muted mb-1">MATCHED SOURCE</p>
+                    <p className="text-content-secondary font-sans leading-relaxed text-[11px]">Game Theory, Cambridge University Press, 2013.</p>
                   </div>
                 </div>
               </div>
-
-              {/* Realistic Match Comparison Preview */}
-              <div className="rounded-xl border border-white/[0.06] bg-[#0c0e15] overflow-hidden">
-                <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.05] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 font-mono">
-                      Hybrid Match
-                    </span>
-                    <span className="text-xs text-zinc-400 truncate font-mono">
-                      Ref: game_theory_handbook.docx
-                    </span>
-                  </div>
-                  <span className="text-xs font-mono font-semibold text-amber-400">
-                    74.3% Match
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.06] text-xs">
-                  <div className="p-3.5 space-y-1">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-                      Your Document
-                    </p>
-                    <p className="text-zinc-300 leading-relaxed text-[11px] font-sans">
-                      "An Introduction to Game Theory, Oxford University Press, 2004. Algorithmic Game Theory, Cambridge University Press, 2007..."
-                    </p>
-                  </div>
-                  <div className="p-3.5 space-y-1 bg-white/[0.01]">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-semibold">
-                      Matched Source
-                    </p>
-                    <p className="text-zinc-300 leading-relaxed text-[11px] font-sans">
-                      "Game Theory, Cambridge University Press, 2013. Algorithmic Game Theory, Cambridge University Press, 2007. Games of Strategy..."
-                    </p>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* ── Features Section ────────────────────────────────────────── */}
-      <section className="relative border-t border-white/[0.06] py-20 bg-[#07080d]/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-mono font-semibold uppercase tracking-widest text-indigo-400 mb-2 block">
-              High Precision NLP Architecture
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
-              Built for Forensic Depth, Not Just Surface Checks
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-              Every stage of the pipeline is calibrated to identify meaning and phrase structure without false positives.
-            </p>
+      <section className="py-24 border-t border-border-subtle bg-surface">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-16">
+            <h4 className="text-xs font-bold text-accent tracking-widest uppercase mb-3">Capabilities</h4>
+            <h2 className="text-3xl font-bold text-content tracking-tight mb-4">Built to Understand Similarity</h2>
+            <p className="text-content-secondary max-w-2xl text-lg">Every stage of the pipeline is calibrated to identify meaning and phrase structure without false positives.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {FEATURES.map(({ icon: Icon, title, desc, tag }) => (
-              <div
-                key={title}
-                className="surface-card surface-card-hover rounded-2xl p-6 flex flex-col justify-between group"
-              >
-                <div className="space-y-4">
-                  <div className="size-11 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-600/20 group-hover:border-indigo-500/30 transition-colors">
-                    <Icon className="size-5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-base text-white mb-2">
-                      {title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                      {desc}
-                    </p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: Sparkles, title: "Semantic Understanding", desc: "Dense 384-dimensional vector embeddings understand conceptual equivalence." },
+              { icon: Zap, title: "Hybrid Scoring Engine", desc: "Mathematical fusion combines semantic similarity with lexical n-gram containment." },
+              { icon: FileCode2, title: "Multi-Format Documents", desc: "Native ingestion for PDF, DOCX, and TXT files up to 15 MB." },
+              { icon: BookOpen, title: "Reference Corpus", desc: "Manage your own indexed reference library for authoritative comparisons." }
+            ].map((f, i) => (
+              <div key={i} className="surface-card p-6 rounded-2xl flex flex-col h-full group">
+                <div className="size-10 rounded-xl bg-highlight border border-border-subtle flex items-center justify-center mb-5 group-hover:bg-accent/10 group-hover:border-accent/20 transition-colors">
+                  <f.icon className="size-5 text-content-muted group-hover:text-accent transition-colors" />
                 </div>
-                <div className="mt-5 pt-4 border-t border-white/[0.05]">
-                  <span className="text-[11px] font-mono text-indigo-300 font-medium">
-                    {tag}
-                  </span>
-                </div>
+                <h3 className="text-base font-semibold text-content mb-2">{f.title}</h3>
+                <p className="text-sm text-content-secondary leading-relaxed flex-1">{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works / NLP Explanation ────────────────────────────────────────── */}
+      <section className="py-24 border-t border-border-subtle">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6">
+              <h2 className="text-3xl font-bold text-content tracking-tight">From Document to Insight</h2>
+              <p className="text-lg text-content-secondary leading-relaxed">
+                CopyCatch doesn't just look for exact phrase matches. It builds a comprehensive fingerprint of your document using a hybrid NLP approach.
+              </p>
+              
+              <div className="space-y-8 pt-4">
+                <div className="flex gap-4">
+                  <div className="shrink-0 size-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-sm border border-accent/20">01</div>
+                  <div>
+                    <h4 className="font-semibold text-content mb-1">Build Reference Corpus</h4>
+                    <p className="text-sm text-content-secondary">Upload authoritative files (PDF, DOCX) to index into your personal library.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="shrink-0 size-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-sm border border-accent/20">02</div>
+                  <div>
+                    <h4 className="font-semibold text-content mb-1">Upload Target Document</h4>
+                    <p className="text-sm text-content-secondary">Submit the document you wish to analyze against your indexed library.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="shrink-0 size-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-sm border border-accent/20">03</div>
+                  <div>
+                    <h4 className="font-semibold text-content mb-1">Analyze & Inspect</h4>
+                    <p className="text-sm text-content-secondary">Review the hybrid score, semantic overlap, and pinpoint exact matching passages.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="surface-card rounded-2xl p-8 space-y-8">
+              <h3 className="font-semibold text-content border-b border-border-subtle pb-4">Hybrid Scoring Architecture</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-content font-medium flex items-center gap-2"><Sparkles className="size-4 text-purple-500" /> Semantic (Vector Embeddings)</span>
+                    <span className="text-content-muted font-mono">60% Weight</span>
+                  </div>
+                  <div className="h-2 w-full bg-highlight rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-500 w-[60%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-content font-medium flex items-center gap-2"><Layers className="size-4 text-cyan-500" /> Lexical (TF-IDF N-grams)</span>
+                    <span className="text-content-muted font-mono">40% Weight</span>
+                  </div>
+                  <div className="h-2 w-full bg-highlight rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-500 w-[40%]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-border-subtle flex items-center justify-between">
+                <span className="text-sm font-semibold text-content">Final Hybrid Score</span>
+                <span className="text-2xl font-bold text-accent">100%</span>
+              </div>
+            </div>
           </div>
 
         </div>
       </section>
 
-      {/* ── Workflow Steps Section ──────────────────────────────────── */}
-      <section className="relative border-t border-white/[0.06] py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-mono font-semibold uppercase tracking-widest text-indigo-400 mb-2 block">
-              Structured Workflow
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
-              Three Simple Steps to Detailed Forensic Results
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-400">
-              No cloud accounts or external subscriptions required. Runs completely locally on your hardware.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {STEPS.map(({ step, title, desc, icon: Icon, detail }) => (
-              <div
-                key={step}
-                className="surface-card rounded-2xl p-6 sm:p-7 relative flex flex-col justify-between border border-white/[0.07] hover:border-white/[0.12] transition-colors"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <span className="font-mono text-2xl font-bold text-indigo-400/90 tracking-tight">
-                      {step}
-                    </span>
-                    <div className="size-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-                      <Icon className="size-5 text-zinc-300" />
-                    </div>
-                  </div>
-
-                  <h3 className="text-lg font-semibold text-white mb-2.5">
-                    {title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4">
-                    {desc}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-white/[0.05]">
-                  <p className="text-[11px] font-mono text-zinc-400">
-                    {detail}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA Banner */}
-          <div className="mt-14 surface-card rounded-2xl p-8 border border-indigo-500/20 bg-gradient-to-r from-indigo-950/20 via-[#0f111a] to-violet-950/20 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-            <div>
-              <h3 className="text-xl font-bold text-white mb-1.5">
-                Ready to analyze your first document?
-              </h3>
-              <p className="text-sm text-zinc-400 max-w-lg">
-                Upload your files into the workspace to inspect similarity scores and detailed passage comparisons.
-              </p>
-            </div>
+      {/* ── Final CTA ────────────────────────────────────────── */}
+      <section className="py-32 border-t border-border-subtle bg-surface">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-content tracking-tight">Ready to understand what overlaps?</h2>
+          <p className="text-lg text-content-secondary">
+            Analyze your document against your reference corpus today.
+          </p>
+          <div className="pt-4">
             <Link
               to="/analyze"
-              id="steps-cta"
-              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors shadow-lg shadow-indigo-600/25 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="inline-flex items-center gap-2 px-8 py-4 text-sm font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <FileSearch className="size-4" />
-              <span>Launch Analyzer</span>
+              <FileSearch className="size-5" />
+              <span>Start Analysis &rarr;</span>
             </Link>
           </div>
-
         </div>
       </section>
-
-    </div>
+    </PageContainer>
   );
 }

@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, X, CheckCircle2, Loader2,
-  FileText, BookMarked, RefreshCw, Trash2,
-  ShieldCheck, Database
+  FileText, BookMarked, Trash2,
+  Database
 } from 'lucide-react';
 import {
   analyzeDocument, uploadReference, listReferences, deleteReference,
@@ -13,6 +13,7 @@ import {
 } from '../services/api';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
+import { PageContainer } from '../components/layout/PageContainer';
 import { recordHistory } from './HistoryPage';
 
 const ACCEPTED_TYPES = {
@@ -31,21 +32,21 @@ function FileTypeIcon({ name }: { name: string }) {
   const ext = name.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') {
     return (
-      <div className="size-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
-        <span className="font-mono text-xs font-bold text-rose-400">PDF</span>
+      <div className="size-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 flex items-center justify-center shrink-0">
+        <span className="font-mono text-xs font-bold text-rose-600 dark:text-rose-400">PDF</span>
       </div>
     );
   }
   if (ext === 'docx') {
     return (
-      <div className="size-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-        <span className="font-mono text-xs font-bold text-blue-400">DOCX</span>
+      <div className="size-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
+        <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">DOCX</span>
       </div>
     );
   }
   return (
-    <div className="size-10 rounded-xl bg-zinc-500/10 border border-zinc-500/20 flex items-center justify-center shrink-0">
-      <span className="font-mono text-xs font-bold text-zinc-300">TXT</span>
+    <div className="size-10 rounded-xl bg-highlight border border-border-medium flex items-center justify-center shrink-0">
+      <span className="font-mono text-xs font-bold text-content-secondary">TXT</span>
     </div>
   );
 }
@@ -63,14 +64,13 @@ export default function AnalyzePage() {
   const [refError, setRefError] = useState<string | null>(null);
   const [deletingRef, setDeletingRef] = useState<string | null>(null);
 
-  // Load reference library
   const loadRefs = useCallback(async () => {
     setRefsLoading(true);
     try {
       const data = await listReferences();
       setRefs(data);
     } catch {
-      // Backend might still be starting up
+      // Background issue
     } finally {
       setRefsLoading(false);
     }
@@ -80,7 +80,6 @@ export default function AnalyzePage() {
     loadRefs();
   }, [loadRefs]);
 
-  // Target file dropzone (Single file)
   const { 
     getRootProps: getTargetProps, 
     getInputProps: getTargetInputProps, 
@@ -98,24 +97,45 @@ export default function AnalyzePage() {
     },
   });
 
-  // Reference files dropzone (Multiple files)
   const { 
     getRootProps: getRefProps, 
     getInputProps: getRefInputProps, 
-    isDragActive: isRefDragActive 
+    isDragActive: isRefDragActive,
+    open: openRefDialog
   } = useDropzone({
     accept: ACCEPTED_TYPES,
     maxFiles: 10,
     maxSize: 15 * 1024 * 1024,
+    noClick: true,
     onDropAccepted: async (acceptedFiles) => {
       setRefUploading(true);
       setRefError(null);
       for (const file of acceptedFiles) {
         try {
           await uploadReference(file);
-        } catch (e: unknown) {
-          const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-          setRefError(detail ?? `Failed to upload reference: ${file.name}`);
+        } catch (e: any) {
+          console.error("Upload error:", e);
+          let errMsg = `Failed to upload reference: ${file.name}`;
+          
+          if (e.response) {
+            const status = e.response.status;
+            let detail = e.response.data?.detail;
+            
+            // FastAPI sometimes returns detail as an array of validation errors
+            if (Array.isArray(detail)) {
+              detail = detail.map((err: any) => err.msg || JSON.stringify(err)).join(", ");
+            } else if (typeof detail === 'object') {
+              detail = JSON.stringify(detail);
+            }
+            
+            errMsg = `Reference upload failed (${status}): ${detail || e.message || 'Unknown backend error'}`;
+          } else if (e.request) {
+            errMsg = `Network error: Could not connect to backend. Is the server running?`;
+          } else {
+            errMsg = `Error: ${e.message}`;
+          }
+          
+          setRefError(errMsg);
         }
       }
       await loadRefs();
@@ -139,7 +159,15 @@ export default function AnalyzePage() {
   };
 
   const handleRunAnalysis = async () => {
-    if (!targetFile) return;
+    if (!targetFile) {
+      setError('Please select a target document first.');
+      return;
+    }
+    if (refs.length === 0) {
+      setError('No reference documents are currently indexed.');
+      return;
+    }
+
     setAnalyzing(true);
     setError(null);
     setUploadProgress(0);
@@ -150,352 +178,279 @@ export default function AnalyzePage() {
       navigate(`/results/${result.analysis_id}`, { state: result });
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail ?? 'Similarity analysis failed. Verify that the backend server is running and models are loaded.');
+      setError(detail ?? 'Analysis failed. Please try again. Verify backend connectivity.');
     } finally {
       setAnalyzing(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-grid-pattern py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <PageContainer withGrid className="pt-10 pb-24">
+      <div className="space-y-10">
         
-        {/* Page Heading & Context */}
-        <div className="space-y-2 border-b border-white/[0.06] pb-6">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
-              Analysis Workspace
-            </span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+        {/* Page Heading */}
+        <div className="space-y-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-content tracking-tight">
             Analyze Document
           </h1>
-          <p className="text-sm sm:text-base text-zinc-400 max-w-2xl">
-            Upload one document to compare it against your indexed reference corpus. The NLP engine will calculate semantic embeddings, lexical overlap, and surface matching passages.
+          <p className="text-sm sm:text-base text-content-secondary max-w-2xl leading-relaxed">
+            Upload one document to compare it against your indexed reference corpus.
           </p>
         </div>
 
-        {/* ── Section 1: Main Document to Analyze (PRIMARY) ─────────────── */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="size-6 rounded-md bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
-                <FileText className="size-3.5 text-indigo-400" />
-              </div>
-              <h2 className="text-lg font-semibold text-white">
-                Document to Analyze
-              </h2>
-            </div>
-            <span className="text-xs text-zinc-400 font-mono">
-              Step 1: Target Upload (1 Document)
-            </span>
-          </div>
+        {/* 2-Column Desktop Composition */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          
+          {/* ── LEFT: Target Document ─────────────── */}
+          <section className="space-y-4">
+            <h3 className="font-semibold text-content flex items-center gap-2">
+              <FileText className="size-4 text-accent" /> Target Document
+            </h3>
 
-          {!targetFile ? (
-            <div
-              {...getTargetProps()}
-              id="target-dropzone"
-              className={`surface-card rounded-2xl border-2 border-dashed p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                isTargetDragActive 
-                  ? 'border-indigo-500 bg-indigo-600/[0.08]' 
-                  : 'border-white/[0.12] hover:border-indigo-400/50 hover:bg-white/[0.02]'
-              }`}
-            >
-              <input {...getTargetInputProps()} id="target-file-input" />
-              
-              <div className="max-w-md mx-auto space-y-4">
-                <div className="size-14 rounded-2xl bg-indigo-600/15 border border-indigo-500/30 flex items-center justify-center mx-auto shadow-inner">
-                  <Upload className={`size-7 ${isTargetDragActive ? 'text-indigo-300' : 'text-indigo-400'}`} />
-                </div>
+            {!targetFile ? (
+              <div
+                {...getTargetProps()}
+                id="target-dropzone"
+                className={`surface-card rounded-2xl border-2 border-dashed p-10 sm:p-14 text-center cursor-pointer transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent flex flex-col items-center justify-center min-h-[340px] ${
+                  isTargetDragActive 
+                    ? 'border-accent bg-accent/5 shadow-md' 
+                    : 'border-border-strong hover:border-accent/50 hover:bg-highlight'
+                }`}
+              >
+                <input {...getTargetInputProps()} id="target-file-input" />
+                
+                <div className="max-w-xs mx-auto space-y-6">
+                  <div className="size-16 rounded-2xl bg-highlight border border-border-subtle flex items-center justify-center mx-auto shadow-inner">
+                    <Upload className={`size-7 ${isTargetDragActive ? 'text-accent' : 'text-content-muted'}`} />
+                  </div>
 
-                <div className="space-y-1">
-                  <p className="text-base font-semibold text-white">
-                    {isTargetDragActive ? 'Drop your document here' : 'Drag & drop document to analyze'}
-                  </p>
-                  <p className="text-xs sm:text-sm text-zinc-400">
-                    Supports native PDF, Microsoft Word DOCX, and Plain Text TXT files
-                  </p>
-                </div>
-
-                {/* Badges for Supported Formats */}
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium text-rose-300 bg-rose-500/10 border border-rose-500/20">
-                    PDF
-                  </span>
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium text-blue-300 bg-blue-500/10 border border-blue-500/20">
-                    DOCX
-                  </span>
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-medium text-zinc-300 bg-zinc-500/10 border border-zinc-500/20">
-                    TXT
-                  </span>
-                  <span className="text-xs text-zinc-400 font-mono ml-2">
-                    Max 15 MB
-                  </span>
-                </div>
-
-                <div className="pt-2">
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 transition-colors">
-                    Browse Local File
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="surface-card rounded-2xl border border-indigo-500/30 bg-indigo-500/[0.04] p-5 sm:p-6"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <FileTypeIcon name={targetFile.name} />
-                  <div className="min-w-0">
-                    <p className="text-sm sm:text-base font-semibold text-white truncate">
-                      {targetFile.name}
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-content">
+                      {isTargetDragActive ? 'Drop your document here' : 'Drag & drop document to analyze'}
                     </p>
-                    <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                      {formatBytes(targetFile.size)} · Ready for comparison
+                    <p className="text-xs sm:text-sm text-content-secondary">
+                      Supports native PDF, Microsoft Word DOCX, and Plain Text TXT files
                     </p>
                   </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                    <span className="px-2 py-1 rounded-md text-[10px] font-mono font-medium text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20">
+                      PDF
+                    </span>
+                    <span className="px-2 py-1 rounded-md text-[10px] font-mono font-medium text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
+                      DOCX
+                    </span>
+                    <span className="px-2 py-1 rounded-md text-[10px] font-mono font-medium text-content-secondary bg-highlight border border-border-medium">
+                      TXT
+                    </span>
+                    <span className="text-xs text-content-muted font-mono ml-2">
+                      Max 15 MB
+                    </span>
+                  </div>
+
+                  <div className="pt-4">
+                    <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-content hover:bg-content-secondary transition-colors shadow-sm cursor-pointer">
+                      Browse Local File
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="surface-card rounded-2xl border border-accent/30 bg-accent/5 p-5 sm:p-8 shadow-sm flex flex-col justify-center min-h-[340px]"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <FileTypeIcon name={targetFile.name} />
+                    <div className="min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-content truncate">
+                        {targetFile.name}
+                      </p>
+                      <p className="text-xs text-content-muted font-mono mt-0.5">
+                        {formatBytes(targetFile.size)} &middot; Selected Target
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    id="remove-target-file"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTargetFile(null);
+                      setError(null);
+                    }}
+                    disabled={analyzing}
+                    className="p-2 rounded-xl text-content-muted hover:text-content hover:bg-highlight transition-colors disabled:opacity-40 shrink-0"
+                    aria-label="Remove selected document"
+                  >
+                    <X className="size-5" />
+                  </button>
                 </div>
 
-                <button
-                  id="remove-target-file"
-                  type="button"
-                  onClick={() => {
-                    setTargetFile(null);
-                    setError(null);
-                  }}
-                  disabled={analyzing}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
-                  aria-label="Remove selected document"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
+                <AnimatePresence>
+                  {analyzing && uploadProgress < 100 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6 pt-6 border-t border-border-subtle space-y-3"
+                    >
+                      <div className="flex items-center justify-between text-xs text-content-muted font-mono">
+                        <span>Uploading to NLP engine...</span>
+                        <span>{uploadProgress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-highlight overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all duration-200"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
 
-              {/* Upload Progress Bar */}
-              <AnimatePresence>
-                {analyzing && uploadProgress < 100 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 pt-4 border-t border-white/[0.06] space-y-2"
-                  >
-                    <div className="flex items-center justify-between text-xs text-zinc-400 font-mono">
-                      <span>Uploading to NLP engine...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-indigo-500 transition-all duration-200"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {analyzing && uploadProgress >= 100 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-4 pt-4 border-t border-white/[0.06] flex items-center gap-2.5 text-xs sm:text-sm text-indigo-300 font-medium"
-                  >
-                    <Loader2 className="size-4 animate-spin text-indigo-400" />
-                    <span>Computing transformer embeddings & TF-IDF similarity vectors...</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-
-          {/* Target File Error Banner */}
-          <AnimatePresence>
-            {error && (
-              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Alert variant="error" title="Analysis Error">
-                  {error}
-                </Alert>
+                  {analyzing && uploadProgress >= 100 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mt-6 pt-6 border-t border-border-subtle flex items-center gap-3 text-xs sm:text-sm text-accent font-medium"
+                    >
+                      <Loader2 className="size-5 animate-spin text-accent shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="font-bold">ANALYZING DOCUMENT</span>
+                        <span className="text-content-secondary mt-0.5 text-xs font-normal">Extracting text, computing semantic similarities, & checking lexical overlap...</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
-          </AnimatePresence>
 
-          {/* Action Trigger Card */}
-          <div className="surface-card rounded-2xl p-5 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 text-center sm:text-left">
-              <p className="text-sm font-medium text-white flex items-center justify-center sm:justify-start gap-2">
-                <ShieldCheck className="size-4 text-indigo-400" />
-                Target Corpus Status:
-              </p>
-              <p className="text-xs text-zinc-400 font-mono">
-                {refs.length === 0 
-                  ? 'No reference documents indexed yet. Add reference files below.'
-                  : `Comparing against ${refs.length} document${refs.length !== 1 ? 's' : ''} in your reference library.`
-                }
-              </p>
+            <AnimatePresence>
+              {error && (
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <Alert variant="error" title="Analysis Notice">
+                    {error}
+                  </Alert>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+
+
+          {/* ── RIGHT: Reference Corpus ─────────────── */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-content flex items-center gap-2">
+                <Database className="size-4 text-purple-500" /> Reference Corpus
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-highlight text-content-secondary border border-border-subtle">
+                {refs.length} Indexed
+              </span>
             </div>
 
+            <div 
+              {...getRefProps()}
+              className={`surface-card rounded-2xl border ${isRefDragActive ? 'border-accent bg-accent/5' : 'border-border-subtle'} overflow-hidden shadow-sm flex flex-col min-h-[340px] relative`}
+            >
+              <input {...getRefInputProps()} />
+              
+              {/* Reference Dropzone Header */}
+              <div
+                onClick={openRefDialog}
+                className="border-b border-border-subtle p-5 text-center cursor-pointer transition-colors bg-surface hover:bg-highlight"
+              >
+                <p className="text-sm font-semibold text-content flex items-center justify-center gap-2">
+                  <Upload className="size-4 text-content-muted" />
+                  {refUploading ? 'Indexing references...' : 'Click or drop files to upload references'}
+                </p>
+                <p className="text-xs text-content-muted mt-1">PDF, DOCX, TXT max 15MB</p>
+              </div>
+
+              {/* Reference List */}
+              <div className="flex-1 overflow-y-auto p-0 bg-base max-h-[250px] lg:max-h-[300px]">
+                {refsLoading ? (
+                  <div className="p-4 space-y-3">
+                    <div className="shimmer h-12 rounded-lg" />
+                    <div className="shimmer h-12 rounded-lg" />
+                  </div>
+                ) : refs.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center p-8 text-center text-content-muted min-h-[200px]">
+                    <BookMarked className="size-10 mb-3 opacity-40 text-content-muted" />
+                    <p className="text-sm font-semibold text-content-secondary mb-1">No reference documents indexed yet.</p>
+                    <p className="text-xs max-w-[220px]">Upload papers, articles, or previous submissions to build the comparison corpus.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border-subtle">
+                    {refs.map((ref) => (
+                      <div key={ref.filename} className="p-4 flex items-center justify-between gap-3 hover:bg-highlight transition-colors group">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FileTypeIcon name={ref.filename} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-content truncate">
+                              {ref.filename}
+                            </p>
+                            <p className="text-[11px] text-content-muted font-mono mt-0.5">
+                              {formatBytes(ref.size)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRef(ref.filename);
+                          }}
+                          disabled={deletingRef === ref.filename}
+                          className="p-2 rounded-lg text-content-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:opacity-40 sm:opacity-50 sm:group-hover:opacity-100 shrink-0"
+                          title={`Delete ${ref.filename}`}
+                        >
+                          {deletingRef === ref.filename ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {refError && (
+              <div className="pt-2">
+                <Alert variant="error" title="Corpus Error">{refError}</Alert>
+              </div>
+            )}
+          </section>
+
+        </div>
+
+        {/* ── Run Analysis Action ──────── */}
+        <div className="flex justify-center pt-8 border-t border-border-subtle">
+          <div className="flex flex-col items-center space-y-4">
             <Button
               id="run-analysis-btn"
               size="lg"
               onClick={handleRunAnalysis}
               loading={analyzing}
-              disabled={!targetFile || refs.length === 0}
-              icon={<CheckCircle2 className="size-4.5" />}
-              className="w-full sm:w-auto min-w-[200px]"
+              disabled={!targetFile || refs.length === 0 || analyzing}
+              icon={<CheckCircle2 className="size-5" />}
+              className={`min-w-[300px] text-base font-bold shadow-lg ${!targetFile || refs.length === 0 ? '' : 'bg-accent hover:bg-accent-hover text-white border-transparent'}`}
             >
-              {analyzing ? 'Analyzing Document…' : 'Run Analysis'}
+              {analyzing ? 'ANALYZING...' : 'RUN ANALYSIS'}
             </Button>
-          </div>
-        </section>
-
-        {/* ── Section 2: Reference Corpus Management (SECONDARY) ──────── */}
-        <section className="space-y-5 pt-6 border-t border-white/[0.08]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <div className="size-6 rounded-md bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-                  <Database className="size-3.5 text-violet-400" />
-                </div>
-                <h2 className="text-lg font-semibold text-white">
-                  Reference Corpus
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
-                  {refs.length} indexed
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                Your reference baseline. Documents here are pre-indexed to compare against the document above.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                id="refresh-refs-btn"
-                type="button"
-                onClick={loadRefs}
-                disabled={refsLoading}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
-                aria-label="Refresh reference list"
-                title="Refresh corpus list"
-              >
-                <RefreshCw className={`size-4 ${refsLoading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Reference Upload Dropzone */}
-          <div
-            {...getRefProps()}
-            id="ref-dropzone"
-            className={`surface-card rounded-xl border border-dashed p-6 text-center cursor-pointer transition-all duration-150 ${
-              isRefDragActive 
-                ? 'border-violet-500 bg-violet-600/[0.08]' 
-                : 'border-white/[0.1] hover:border-violet-400/40 hover:bg-white/[0.02]'
-            }`}
-          >
-            <input {...getRefInputProps()} id="ref-file-input" />
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <div className="size-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                <Upload className="size-4 text-violet-400" />
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-zinc-200">
-                  {refUploading ? 'Indexing reference documents...' : 'Upload Reference Documents'}
+            
+            <div className="h-6 flex items-center justify-center">
+              {refs.length === 0 && targetFile && !analyzing && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                  Cannot analyze without a reference corpus. Add files to the corpus first.
                 </p>
-                <p className="text-[11px] text-zinc-400 font-mono">
-                  Drag & drop canonical files (PDF, DOCX, TXT up to 15 MB) to index into the corpus
-                </p>
-              </div>
+              )}
             </div>
           </div>
-
-          {/* Reference Error Notice */}
-          <AnimatePresence>
-            {refError && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Alert variant="error" title="Corpus Error">
-                  {refError}
-                </Alert>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Reference Documents Collection */}
-          <div className="surface-card rounded-2xl border border-white/[0.08] overflow-hidden">
-            <div className="px-5 py-3.5 bg-white/[0.02] border-b border-white/[0.06] flex items-center justify-between text-xs text-zinc-400 font-mono">
-              <span>Indexed Corpus Documents</span>
-              <span>Storage: Local Filesystem</span>
-            </div>
-
-            {refsLoading ? (
-              <div className="p-6 space-y-3">
-                <div className="shimmer h-12 rounded-xl" />
-                <div className="shimmer h-12 rounded-xl" />
-              </div>
-            ) : refs.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <BookMarked className="size-10 text-zinc-700 mx-auto" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-zinc-300">
-                    No reference documents indexed
-                  </p>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-                    Upload papers, articles, or student submissions above so CopyCatch has reference material to detect similarities against.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/[0.05]">
-                {refs.map((ref) => (
-                  <div
-                    key={ref.filename}
-                    className="p-4 sm:px-6 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <FileTypeIcon name={ref.filename} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-200 truncate">
-                          {ref.filename}
-                        </p>
-                        <div className="flex items-center gap-3 text-[11px] text-zinc-400 font-mono mt-0.5">
-                          <span>{formatBytes(ref.size)}</span>
-                          {ref.modified_at && (
-                            <>
-                              <span>•</span>
-                              <span>Indexed {new Date(ref.modified_at).toLocaleDateString()}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        id={`delete-ref-${ref.filename}`}
-                        type="button"
-                        onClick={() => handleDeleteRef(ref.filename)}
-                        disabled={deletingRef === ref.filename}
-                        className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-40"
-                        aria-label={`Delete ${ref.filename}`}
-                        title="Remove from reference corpus"
-                      >
-                        {deletingRef === ref.filename ? (
-                          <Loader2 className="size-4 animate-spin text-rose-400" />
-                        ) : (
-                          <Trash2 className="size-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        </div>
 
       </div>
-    </div>
+    </PageContainer>
   );
 }

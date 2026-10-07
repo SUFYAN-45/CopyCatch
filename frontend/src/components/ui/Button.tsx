@@ -10,10 +10,10 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS = {
-  primary:   'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 border border-indigo-400/25',
-  secondary: 'bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.1] text-zinc-200 border border-white/[0.1] shadow-sm',
-  ghost:     'bg-transparent hover:bg-white/[0.05] active:bg-white/[0.08] text-zinc-300 border border-transparent',
-  danger:    'bg-red-500/15 hover:bg-red-500/25 active:bg-red-500/30 text-red-300 border border-red-500/30 shadow-sm',
+  primary:   'bg-accent hover:bg-accent-hover active:scale-95 text-white shadow-md border-transparent',
+  secondary: 'bg-surface hover:bg-highlight active:scale-95 text-content border border-border-strong shadow-sm',
+  ghost:     'bg-transparent hover:bg-highlight active:scale-95 text-content-secondary border border-transparent',
+  danger:    'bg-rose-50 dark:bg-rose-500/15 hover:bg-rose-100 dark:hover:bg-rose-500/25 active:scale-95 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 shadow-sm',
 };
 
 const SIZES = {
@@ -38,7 +38,7 @@ export function Button({
       whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
       transition={{ type: 'spring', stiffness: 450, damping: 25 }}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={`inline-flex items-center justify-center transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...(rest as object)}
     >
       {loading ? <Loader2 className="size-4 animate-spin text-current" /> : icon}
