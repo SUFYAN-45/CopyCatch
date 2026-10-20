@@ -26,6 +26,8 @@ export interface AnalysisResult {
     size: number;
     word_count?: number;
     char_count?: number;
+    execution_time_ms?: number;
+    filters_applied?: { exclude_quotes?: boolean; exclude_bibliography?: boolean };
   } | null;
   overall_similarity: number;
   semantic_similarity: number;
@@ -34,6 +36,9 @@ export interface AnalysisResult {
   matches: Match[];
   analyzed_at: string;
   message: string | null;
+  execution_time_ms?: number;
+  word_count?: number;
+  filters_applied?: { exclude_quotes?: boolean; exclude_bibliography?: boolean };
 }
 
 export interface ReferenceDoc {
@@ -42,14 +47,26 @@ export interface ReferenceDoc {
   modified_at: string;
 }
 
+export interface AnalyzeOptions {
+  exclude_quotes?: boolean;
+  exclude_bibliography?: boolean;
+}
+
 // ── Analysis ─────────────────────────────────────────────────────────────────
 
 export async function analyzeDocument(
   file: File,
   onProgress?: (pct: number) => void,
+  options?: AnalyzeOptions,
 ): Promise<AnalysisResult> {
   const form = new FormData();
   form.append('file', file);
+  if (options?.exclude_quotes !== undefined) {
+    form.append('exclude_quotes', String(options.exclude_quotes));
+  }
+  if (options?.exclude_bibliography !== undefined) {
+    form.append('exclude_bibliography', String(options.exclude_bibliography));
+  }
 
   const { data } = await api.post<AnalysisResult>('/analyze', form, {
     onUploadProgress: (e) => {

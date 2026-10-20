@@ -1,7 +1,7 @@
 """Document metadata schemas."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Dict, Optional
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
@@ -17,3 +17,6 @@ class DocumentMetadata(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp of document ingestion",
     )
+    word_count: Optional[int] = Field(default=None, description="Total word count of document")
+    execution_time_ms: Optional[int] = Field(default=None, description="Execution time in milliseconds")
+    filters_applied: Optional[Dict[str, bool]] = Field(default=None, description="Applied filters")

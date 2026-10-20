@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, X, CheckCircle2, Loader2,
   FileText, BookMarked, Trash2,
-  Database, RefreshCw, AlertCircle
+  Database, RefreshCw, AlertCircle,
+  Search, Sparkles, Sliders
 } from 'lucide-react';
 import {
   analyzeDocument, uploadReference, listReferences, deleteReference,
@@ -68,6 +69,9 @@ export default function AnalyzePage() {
   const [refError, setRefError] = useState<string | null>(null);
   const [refSuccess, setRefSuccess] = useState<string | null>(null);
   const [deletingRef, setDeletingRef] = useState<string | null>(null);
+  const [refSearchQuery, setRefSearchQuery] = useState('');
+  const [excludeQuotes, setExcludeQuotes] = useState(false);
+  const [excludeBibliography, setExcludeBibliography] = useState(false);
 
   const loadRefs = useCallback(async () => {
     setRefsLoading(true);
@@ -187,7 +191,10 @@ export default function AnalyzePage() {
     setUploadProgress(0);
 
     try {
-      const result = await analyzeDocument(targetFile, setUploadProgress);
+      const result = await analyzeDocument(targetFile, setUploadProgress, {
+        exclude_quotes: excludeQuotes,
+        exclude_bibliography: excludeBibliography,
+      });
       recordHistory(result);
       navigate(`/results/${result.analysis_id}`, { state: result });
     } catch (e: unknown) {
@@ -391,14 +398,17 @@ export default function AnalyzePage() {
               style={{ padding: '32px', borderRadius: '16px' }}
             >
               <div className="space-y-4 flex flex-col flex-1">
-                <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-between pb-3 border-b border-border-subtle gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <h2 className="text-base font-bold text-content flex items-center gap-2">
                       <Database className="size-4.5 text-purple-500" />
                       <span>Reference Corpus</span>
                     </h2>
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-highlight text-content-secondary border border-border-subtle">
                       {refs.length} Indexed
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-accent/10 text-accent border border-accent/20 hidden sm:inline-block">
+                      {formatBytes(refs.reduce((acc, r) => acc + (r.size || 0), 0))} Total
                     </span>
                   </div>
 
@@ -460,6 +470,29 @@ export default function AnalyzePage() {
                   )}
                 </AnimatePresence>
 
+                {/* Search input if refs.length > 3 */}
+                {refs.length > 3 && (
+                  <div className="relative">
+                    <Search className="size-3.5 text-content-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={refSearchQuery}
+                      onChange={(e) => setRefSearchQuery(e.target.value)}
+                      placeholder="Filter indexed reference files..."
+                      className="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs bg-surface border border-border-medium text-content placeholder:text-content-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    {refSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setRefSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content p-0.5 cursor-pointer"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Reference list with word-break: break-word & padding: 12px 16px */}
                 <div 
                   className="overflow-y-auto rounded-xl border border-border-subtle bg-base divide-y divide-border-subtle"
@@ -477,41 +510,63 @@ export default function AnalyzePage() {
                       <p className="text-[11px] max-w-xs mx-auto mt-1">Upload reference materials to build your comparative corpus.</p>
                     </div>
                   ) : (
-                    refs.map((ref) => (
-                      <div 
-                        key={ref.filename} 
-                        className="flex items-center justify-between gap-3 hover:bg-highlight transition-colors"
-                        style={{ padding: '12px 16px' }}
-                      >
-                        <div className="flex items-center gap-3 min-w-0" style={{ wordBreak: 'break-word' }}>
-                          <FileTypeBadge name={ref.filename} />
-                          <div className="min-w-0">
-                            <p className="text-xs sm:text-sm font-medium text-content font-mono" style={{ wordBreak: 'break-all' }}>
-                              {ref.filename}
-                            </p>
-                            <p className="text-[11px] text-content-muted font-mono mt-0.5">
-                              {formatBytes(ref.size)} &middot; Indexed
-                            </p>
-                          </div>
-                        </div>
+                    (() => {
+                      const displayed = refSearchQuery.trim()
+                        ? refs.filter((r) => r.filename.toLowerCase().includes(refSearchQuery.toLowerCase().trim()))
+                        : refs;
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRef(ref.filename)}
-                          disabled={deletingRef === ref.filename}
-                          className="p-1.5 rounded-lg text-content-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
-                          title={`Delete ${ref.filename}`}
+                      if (displayed.length === 0) {
+                        return (
+                          <div style={{ padding: '20px 16px', textAlign: 'center' }} className="text-content-muted text-xs">
+                            No references match "{refSearchQuery}"
+                          </div>
+                        );
+                      }
+
+                      return displayed.map((ref) => (
+                        <div 
+                          key={ref.filename} 
+                          className="flex items-center justify-between gap-3 hover:bg-highlight transition-colors"
+                          style={{ padding: '12px 16px' }}
                         >
-                          {deletingRef === ref.filename ? (
-                            <Loader2 className="size-4 animate-spin text-rose-500" />
-                          ) : (
-                            <Trash2 className="size-4" />
-                          )}
-                        </button>
-                      </div>
-                    ))
+                          <div className="flex items-center gap-3 min-w-0" style={{ wordBreak: 'break-word' }}>
+                            <FileTypeBadge name={ref.filename} />
+                            <div className="min-w-0">
+                              <p className="text-xs sm:text-sm font-medium text-content font-mono" style={{ wordBreak: 'break-all' }}>
+                                {ref.filename}
+                              </p>
+                              <p className="text-[11px] text-content-muted font-mono mt-0.5">
+                                {formatBytes(ref.size)} &middot; Indexed
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRef(ref.filename)}
+                            disabled={deletingRef === ref.filename}
+                            className="p-1.5 rounded-lg text-content-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
+                            title={`Delete ${ref.filename}`}
+                          >
+                            {deletingRef === ref.filename ? (
+                              <Loader2 className="size-4 animate-spin text-rose-500" />
+                            ) : (
+                              <Trash2 className="size-4" />
+                            )}
+                          </button>
+                        </div>
+                      ));
+                    })()
                   )}
                 </div>
+
+                {/* Corpus footer metrics */}
+                {refs.length > 0 && (
+                  <div className="pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-content-muted font-mono">
+                    <span>Corpus Volume: <strong className="text-content">{formatBytes(refs.reduce((acc, r) => acc + (r.size || 0), 0))}</strong></span>
+                    <span>{refs.length} file{refs.length !== 1 ? 's' : ''} staged</span>
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -520,9 +575,96 @@ export default function AnalyzePage() {
 
         {/* ── RUN ANALYSIS AREA: margin-top: 32px; padding: 24px ───────── */}
         <div 
-          className="surface-card rounded-2xl border border-border-subtle flex flex-col items-center justify-center text-center space-y-3"
-          style={{ marginTop: '32px', padding: '24px' }}
+          className="surface-card rounded-2xl border border-border-subtle flex flex-col items-center justify-center text-center space-y-4"
+          style={{ marginTop: '32px', padding: '28px 24px' }}
         >
+          {/* Smart Preprocessing Filters */}
+          <div className="flex items-center justify-center gap-3 flex-wrap pb-1">
+            <span className="text-xs font-mono text-content-muted flex items-center gap-1.5 mr-1">
+              <Sliders className="size-3.5 text-accent" />
+              <span>Smart Filters:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setExcludeQuotes((prev) => !prev)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                excludeQuotes
+                  ? 'bg-accent/10 text-accent border-accent/40 shadow-xs ring-1 ring-accent/30'
+                  : 'bg-surface text-content-secondary border-border-medium hover:border-accent hover:text-content'
+              }`}
+            >
+              <span className={`size-3.5 rounded border flex items-center justify-center transition-colors ${
+                excludeQuotes ? 'bg-accent border-accent text-white' : 'border-border-strong bg-highlight'
+              }`}>
+                {excludeQuotes && <CheckCircle2 className="size-3" />}
+              </span>
+              <span>Ignore Quoted Citations ("...")</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setExcludeBibliography((prev) => !prev)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                excludeBibliography
+                  ? 'bg-accent/10 text-accent border-accent/40 shadow-xs ring-1 ring-accent/30'
+                  : 'bg-surface text-content-secondary border-border-medium hover:border-accent hover:text-content'
+              }`}
+            >
+              <span className={`size-3.5 rounded border flex items-center justify-center transition-colors ${
+                excludeBibliography ? 'bg-accent border-accent text-white' : 'border-border-strong bg-highlight'
+              }`}>
+                {excludeBibliography && <CheckCircle2 className="size-3" />}
+              </span>
+              <span>Exclude Bibliography / References</span>
+            </button>
+          </div>
+
+          {/* 3-Step Readiness Stepper */}
+          <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+            {/* Step 1: Corpus Indexed */}
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              refs.length > 0 
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25'
+                : 'bg-highlight text-content-muted border-border-subtle'
+            }`}>
+              {refs.length > 0 ? (
+                <CheckCircle2 className="size-3.5 text-emerald-500" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-content-muted" />
+              )}
+              <span>Step 1: Corpus Indexed ({refs.length})</span>
+            </div>
+
+            <span className="text-content-muted text-xs hidden sm:inline">&rarr;</span>
+
+            {/* Step 2: Target Staged */}
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              targetFile !== null 
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25'
+                : 'bg-highlight text-content-muted border-border-subtle'
+            }`}>
+              {targetFile !== null ? (
+                <CheckCircle2 className="size-3.5 text-emerald-500" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-content-muted" />
+              )}
+              <span>Step 2: Target Staged</span>
+            </div>
+
+            <span className="text-content-muted text-xs hidden sm:inline">&rarr;</span>
+
+            {/* Step 3: Dual-Channel Engine Ready */}
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              targetFile !== null && refs.length > 0
+                ? 'bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30 shadow-sm'
+                : 'bg-highlight text-content-muted border-border-subtle'
+            }`}>
+              <Sparkles className="size-3.5 text-purple-500" />
+              <span>Step 3: Dual-Channel Engine Ready</span>
+            </div>
+          </div>
+
           <Button
             id="run-analysis-btn"
             size="lg"

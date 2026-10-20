@@ -1,18 +1,21 @@
-import { 
-  Sparkles, 
-  Search, 
-  Layers, 
-  BarChart2, 
-  FileText, 
-  ShieldCheck, 
-  Cpu, 
-  Binary, 
-  Terminal, 
-  Zap, 
-  ArrowRight 
+import { useState } from 'react';
+import {
+  Sparkles,
+  Search,
+  Layers,
+  BarChart2,
+  FileText,
+  ShieldCheck,
+  Cpu,
+  Binary,
+  Terminal,
+  Zap,
+  ArrowRight,
+  Calculator
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
+import { ScoreRing, getScoreColor } from '../components/ui/ScoreRing';
 
 const PIPELINE_STAGES = [
   {
@@ -112,15 +115,37 @@ const CLASSIFICATION_TIERS = [
   { range: '0% – 19.9%', label: 'Minimal / No Similarity', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', desc: 'Essentially original phrasing with no significant correlation to the indexed reference corpus.' },
 ];
 
+function getClassificationForScore(score: number) {
+  if (score >= 80) return CLASSIFICATION_TIERS[0];
+  if (score >= 60) return CLASSIFICATION_TIERS[1];
+  if (score >= 40) return CLASSIFICATION_TIERS[2];
+  if (score >= 20) return CLASSIFICATION_TIERS[3];
+  return CLASSIFICATION_TIERS[4];
+}
+
+const PRESET_SIMULATIONS = [
+  { label: 'Paraphrased Draft', semantic: 84, lexical: 32 },
+  { label: 'Verbatim Copy', semantic: 96, lexical: 92 },
+  { label: 'Terminology Overlap', semantic: 48, lexical: 65 },
+  { label: 'Original Research', semantic: 15, lexical: 5 },
+];
+
 export default function AboutPage() {
+  const [semanticScore, setSemanticScore] = useState<number>(75);
+  const [lexicalScore, setLexicalScore] = useState<number>(45);
+
+  const hybridScore = +(0.6 * semanticScore + 0.4 * lexicalScore).toFixed(1);
+  const activeTier = getClassificationForScore(hybridScore);
+  const { hex: scoreColorHex } = getScoreColor(hybridScore);
+
   return (
     <PageContainer withGrid={false}>
       <div style={{ paddingTop: '32px', paddingBottom: '80px' }}>
-        
+
         {/* Centered Header Section */}
         <div style={{ textAlign: 'center', maxWidth: '760px', margin: '0 auto 56px auto' }} className="space-y-3">
           <div className="flex justify-center">
-            <span 
+            <span
               className="rounded-full text-[11px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20"
               style={{ padding: '4px 14px' }}
             >
@@ -149,7 +174,7 @@ export default function AboutPage() {
             <Zap className="size-5 text-accent hidden sm:block" />
           </div>
 
-          <div 
+          <div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
             style={{ gap: '24px' }}
           >
@@ -159,16 +184,16 @@ export default function AboutPage() {
                 <div
                   key={stage.step}
                   className="surface-card rounded-2xl border border-border-subtle hover:border-border-medium transition-colors shadow-sm"
-                  style={{ 
-                    padding: '28px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    justifyContent: 'space-between' 
+                  style={{
+                    padding: '28px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
                   }}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span 
+                      <span
                         className="font-mono text-xs font-bold text-accent bg-accent/10 rounded-lg border border-accent/20"
                         style={{ padding: '4px 10px' }}
                       >
@@ -193,7 +218,7 @@ export default function AboutPage() {
                     </p>
                   </div>
 
-                  <div 
+                  <div
                     className="border-t border-border-subtle text-[11px] font-mono text-content-muted"
                     style={{ paddingTop: '16px', marginTop: '16px' }}
                   >
@@ -202,6 +227,147 @@ export default function AboutPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* ── INTERACTIVE HYBRID SCORING SIMULATOR ─────────────────────── */}
+        <div
+          className="surface-card rounded-2xl border border-border-subtle shadow-sm space-y-6"
+          style={{ padding: '32px', marginBottom: '56px' }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-4">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+                <Calculator className="size-5" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-content tracking-tight">
+                  Interactive Hybrid Formula Calculator
+                </h2>
+                <p className="text-xs sm:text-sm text-content-secondary mt-0.5">
+                  Simulate live scoring combinations of CopyCatch's dual-channel mathematical fusion model.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick preset chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-mono text-content-muted mr-1 hidden lg:inline">Presets:</span>
+              {PRESET_SIMULATIONS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setSemanticScore(preset.semantic);
+                    setLexicalScore(preset.lexical);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-highlight hover:bg-surface border border-border-subtle hover:border-border-medium text-content-secondary hover:text-content transition-all cursor-pointer"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Controls: Sliders */}
+            <div className="lg:col-span-7 space-y-6">
+
+              {/* Semantic Slider */}
+              <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                      Semantic Similarity (Dense Vectors — 60% Weight)
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-300">
+                    {semanticScore.toFixed(1)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={semanticScore}
+                  onChange={(e) => setSemanticScore(parseFloat(e.target.value))}
+                  className="w-full accent-purple-600 dark:accent-purple-400 cursor-pointer h-2 bg-highlight rounded-lg"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-content-muted">
+                  <span>0% (No conceptual overlap)</span>
+                  <span>100% (Exact semantic clone)</span>
+                </div>
+              </div>
+
+              {/* Lexical Slider */}
+              <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-cyan-600 dark:text-cyan-400" />
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
+                      Lexical Similarity (TF-IDF &amp; 3-Grams — 40% Weight)
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-cyan-700 dark:text-cyan-300">
+                    {lexicalScore.toFixed(1)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={lexicalScore}
+                  onChange={(e) => setLexicalScore(parseFloat(e.target.value))}
+                  className="w-full accent-cyan-600 dark:accent-cyan-400 cursor-pointer h-2 bg-highlight rounded-lg"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-content-muted">
+                  <span>0% (Disjoint vocabulary)</span>
+                  <span>100% (Verbatim string duplicate)</span>
+                </div>
+              </div>
+
+              {/* Live Formula Computation Card */}
+              <div className="p-4 rounded-xl bg-highlight/60 border border-border-medium font-mono text-xs space-y-1.5">
+                <div className="text-content-muted flex items-center justify-between">
+                  <span>MATHEMATICAL FUSION EQUATION:</span>
+                  <span className="text-[11px] font-bold text-accent">Composite Score</span>
+                </div>
+                <div className="text-content font-bold text-xs sm:text-sm break-all">
+                  (0.60 &times; {semanticScore.toFixed(1)}%) + (0.40 &times; {lexicalScore.toFixed(1)}%) = <span style={{ color: scoreColorHex }}>{hybridScore}%</span>
+                </div>
+                <div className="text-[11px] text-content-secondary">
+                  Weighted: {(0.6 * semanticScore).toFixed(1)}% semantic contribution + {(0.4 * lexicalScore).toFixed(1)}% lexical contribution.
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Display: Ring & Classification Result */}
+            <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 rounded-2xl bg-base border border-border-subtle space-y-4 text-center">
+              <ScoreRing
+                score={hybridScore}
+                size={160}
+                strokeWidth={10}
+                label="Simulated Hybrid"
+                sublabel="Live Calculated Score"
+              />
+
+              <div className="space-y-1.5 w-full pt-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xs font-mono uppercase text-content-muted">Resulting Tier:</span>
+                  <span className={`rounded-md text-xs font-bold border px-2.5 py-0.5 ${activeTier.bg} ${activeTier.border} ${activeTier.color}`}>
+                    {activeTier.label}
+                  </span>
+                </div>
+                <p className="text-xs text-content-secondary max-w-xs mx-auto leading-relaxed pt-1">
+                  {activeTier.desc}
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -219,8 +385,8 @@ export default function AboutPage() {
           <div className="surface-card rounded-2xl border border-border-subtle overflow-hidden shadow-sm">
             <div className="divide-y divide-border-subtle">
               {CLASSIFICATION_TIERS.map((tier) => (
-                <div 
-                  key={tier.label} 
+                <div
+                  key={tier.label}
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-highlight/50 transition-colors"
                   style={{ padding: '16px 24px' }}
                 >
@@ -228,7 +394,7 @@ export default function AboutPage() {
                     <span className="font-mono text-xs font-bold text-content w-24">
                       {tier.range}
                     </span>
-                    <span 
+                    <span
                       className={`rounded-md text-xs font-semibold border ${tier.bg} ${tier.border} ${tier.color}`}
                       style={{ padding: '2px 10px' }}
                     >
@@ -255,15 +421,15 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div 
+          <div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
             style={{ gap: '24px' }}
           >
             {TECH_STACK.map((tech) => {
               const Icon = tech.icon;
               return (
-                <div 
-                  key={tech.title} 
+                <div
+                  key={tech.title}
                   className="surface-card rounded-2xl border border-border-subtle space-y-3 shadow-sm hover:border-border-medium transition-colors"
                   style={{ padding: '24px' }}
                 >
@@ -286,7 +452,7 @@ export default function AboutPage() {
         </div>
 
         {/* Bottom CTA Card */}
-        <div 
+        <div
           className="surface-card rounded-2xl border border-border-subtle text-center space-y-4 shadow-sm"
           style={{ padding: '40px 24px' }}
         >

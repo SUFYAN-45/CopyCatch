@@ -45,6 +45,9 @@ class AnalysisResult(BaseModel):
         description="Timestamp when the analysis was performed",
     )
     message: Optional[str] = Field(default=None, description="Supplementary status message or note")
+    execution_time_ms: Optional[int] = Field(default=None, description="Analysis execution duration in milliseconds")
+    word_count: Optional[int] = Field(default=None, description="Total word count of submitted document")
+    filters_applied: Optional[Dict[str, bool]] = Field(default=None, description="Filters applied during analysis")
 
 
 class ReferenceDocumentInfo(BaseModel):

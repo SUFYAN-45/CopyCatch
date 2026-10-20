@@ -2,6 +2,8 @@
 
 import logging
 from pathlib import Path
+import re
+import time
 from typing import Any, Dict, List, Optional
 import numpy as np
 
@@ -25,6 +27,31 @@ class PlagiarismAnalysisService:
         # In-memory runtime cache for reference documents: filename -> {mtime, text, chunks, embeddings}
         self._ref_cache: Dict[str, Dict[str, Any]] = {}
 
+    @staticmethod
+    def _strip_quotes(text: str) -> str:
+        """Strip quoted strings ("..." and “...”) longer than 20 characters."""
+        if not text:
+            return ""
+        pattern = r'["\u201c]([^"\u201d]{20,}?)["\u201d]'
+        return re.sub(pattern, " ", text)
+
+    @staticmethod
+    def _strip_bibliography(text: str) -> str:
+        """Detect trailing bibliography markers in the last 35% of the text and truncate."""
+        if not text or len(text) < 100:
+            return text
+        threshold_idx = int(len(text) * 0.65)
+        trailing_section = text[threshold_idx:]
+
+        heading_pattern = r'(?im)^\s*(?:#+\s*)?(?:references|bibliography|works\s+cited)(?:\s*:|\s*$)'
+        match = re.search(heading_pattern, trailing_section)
+        if match:
+            cut_point = threshold_idx + match.start()
+            truncated = text[:cut_point].strip()
+            if len(truncated) >= 50:
+                return truncated
+        return text
+
     def _get_or_load_reference(self, path: Path) -> Optional[Dict[str, Any]]:
         """Load and cache processed representation of a reference corpus document."""
         try:
@@ -39,29 +66,27 @@ class PlagiarismAnalysisService:
             chunks = TextPreprocessor.chunk_document(text)
 
             if not chunks:
+                logger.warning("Reference document '%s' produced zero chunks.", path.name)
                 return None
 
-            chunk_texts = [c.text for c in chunks]
-            embeddings = semantic_engine.embed_texts(chunk_texts)
+            texts = [c.text for c in chunks]
+            embeddings = semantic_engine.embed_texts(texts)
 
-            cached_data = {
+            data = {
                 "mtime": mtime,
                 "text": text,
                 "chunks": chunks,
                 "embeddings": embeddings,
             }
-            self._ref_cache[path.name] = cached_data
-            return cached_data
+            self._ref_cache[path.name] = data
+            return data
 
-        except DocumentEmptyError:
-            logger.warning("Reference document '%s' is empty or has no readable text. Skipping.", path.name)
-            return None
         except Exception as err:
-            logger.warning("Could not process reference document '%s': %s. Skipping.", path.name, err)
+            logger.error("Failed to load reference '%s': %s", path.name, err)
             return None
 
     def invalidate_cache(self, filename: Optional[str] = None) -> None:
-        """Clear cache for a specific reference document or all documents."""
+        """Clear cache for a specific document or entire corpus."""
         if filename:
             self._ref_cache.pop(filename, None)
         else:
@@ -73,14 +98,31 @@ class PlagiarismAnalysisService:
         metadata: DocumentMetadata,
         semantic_weight: float = settings.DEFAULT_SEMANTIC_WEIGHT,
         lexical_weight: float = settings.DEFAULT_LEXICAL_WEIGHT,
+        exclude_quotes: bool = False,
+        exclude_bibliography: bool = False,
     ) -> AnalysisResult:
         """Execute full plagiarism detection pipeline on an uploaded document."""
+        start_time = time.perf_counter()
+
         # 1. Document Extraction
         extracted_text = DocumentExtractor.extract_text(file_path)
+        word_count = len(extracted_text.split())
+        filters_applied = {
+            "exclude_quotes": bool(exclude_quotes),
+            "exclude_bibliography": bool(exclude_bibliography),
+        }
+
+        # Apply Smart Filters
+        processed_text = extracted_text
+        if exclude_quotes:
+            processed_text = self._strip_quotes(processed_text)
+        if exclude_bibliography:
+            processed_text = self._strip_bibliography(processed_text)
 
         # 2. Text Preprocessing & Chunking
-        query_chunks = TextPreprocessor.chunk_document(extracted_text)
+        query_chunks = TextPreprocessor.chunk_document(processed_text)
         if not query_chunks:
+            exec_ms = round((time.perf_counter() - start_time) * 1000)
             return plagiarism_detector.generate_report(
                 document_metadata=metadata,
                 semantic_score=0.0,
@@ -88,7 +130,10 @@ class PlagiarismAnalysisService:
                 matches=[],
                 semantic_weight=semantic_weight,
                 lexical_weight=lexical_weight,
-                message="Submitted document contains no chunkable text.",
+                message="Submitted document contains no chunkable text after filtering.",
+                execution_time_ms=exec_ms,
+                word_count=word_count,
+                filters_applied=filters_applied,
             )
 
         # 3. Generate Semantic Embeddings for Query Chunks
@@ -107,6 +152,7 @@ class PlagiarismAnalysisService:
             valid_refs.append(ref_p)
 
         if not valid_refs:
+            exec_ms = round((time.perf_counter() - start_time) * 1000)
             report = plagiarism_detector.generate_report(
                 document_metadata=metadata,
                 semantic_score=0.0,
@@ -115,6 +161,9 @@ class PlagiarismAnalysisService:
                 semantic_weight=semantic_weight,
                 lexical_weight=lexical_weight,
                 message="No reference documents available in the corpus for comparison.",
+                execution_time_ms=exec_ms,
+                word_count=word_count,
+                filters_applied=filters_applied,
             )
             storage_service.save_report(report)
             return report
@@ -134,7 +183,7 @@ class PlagiarismAnalysisService:
             ref_text = ref_data["text"]
 
             # Document-level TF-IDF similarity against this reference
-            doc_tfidf = lexical_engine.compute_tfidf_similarity(extracted_text, ref_text) * 100.0
+            doc_tfidf = lexical_engine.compute_tfidf_similarity(processed_text, ref_text) * 100.0
             max_lexical_scores.append(doc_tfidf)
 
             # Cosine similarity matrix: Q x R
@@ -167,6 +216,8 @@ class PlagiarismAnalysisService:
         final_matches = plagiarism_detector.deduplicate_matches(all_matches)
 
         # 7. Generate and Persist Analysis Report
+        execution_time_ms = round((time.perf_counter() - start_time) * 1000)
+
         report = plagiarism_detector.generate_report(
             document_metadata=metadata,
             semantic_score=overall_semantic,
@@ -174,6 +225,9 @@ class PlagiarismAnalysisService:
             matches=final_matches,
             semantic_weight=semantic_weight,
             lexical_weight=lexical_weight,
+            execution_time_ms=execution_time_ms,
+            word_count=word_count,
+            filters_applied=filters_applied,
         )
 
         storage_service.save_report(report)

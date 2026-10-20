@@ -149,6 +149,9 @@ class PlagiarismDetector:
         semantic_weight: float = settings.DEFAULT_SEMANTIC_WEIGHT,
         lexical_weight: float = settings.DEFAULT_LEXICAL_WEIGHT,
         message: Optional[str] = None,
+        execution_time_ms: Optional[int] = None,
+        word_count: Optional[int] = None,
+        filters_applied: Optional[Dict[str, bool]] = None,
     ) -> AnalysisResult:
         """Construct a validated AnalysisResult instance with normalized scores and category."""
         overall_score = cls.calculate_hybrid_score(
@@ -161,6 +164,14 @@ class PlagiarismDetector:
         classification = cls.classify_similarity(overall_score)
         doc_id = document_metadata.document_id if document_metadata else None
 
+        if document_metadata:
+            if word_count is not None:
+                document_metadata.word_count = word_count
+            if execution_time_ms is not None:
+                document_metadata.execution_time_ms = execution_time_ms
+            if filters_applied is not None:
+                document_metadata.filters_applied = filters_applied
+
         return AnalysisResult(
             document_id=doc_id,
             document=document_metadata,
@@ -170,6 +181,9 @@ class PlagiarismDetector:
             classification=classification,
             matches=matches,
             message=message,
+            execution_time_ms=execution_time_ms,
+            word_count=word_count,
+            filters_applied=filters_applied,
         )
 
 

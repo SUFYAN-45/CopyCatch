@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
 from app.core.config import settings
 from app.schemas.analysis import AnalysisResult
@@ -28,6 +28,8 @@ async def analyze_document_endpoint(
     lexical_weight: Optional[float] = Query(
         default=None, ge=0.0, le=1.0, description="Optional custom lexical similarity weight"
     ),
+    exclude_quotes: bool = Form(default=False, description="Exclude quoted text strings >20 characters"),
+    exclude_bibliography: bool = Form(default=False, description="Exclude bibliography and reference sections"),
 ) -> AnalysisResult:
     """Validate, extract, preprocess, and compare an uploaded document against reference corpus."""
     filename = file.filename or "unnamed_document.txt"
@@ -75,6 +77,8 @@ async def analyze_document_endpoint(
             metadata=metadata,
             semantic_weight=sem_w,
             lexical_weight=lex_w,
+            exclude_quotes=exclude_quotes,
+            exclude_bibliography=exclude_bibliography,
         )
         return report
 
