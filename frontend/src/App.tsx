@@ -33,9 +33,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex flex-col min-h-screen bg-base text-content">
+      <div className="flex flex-col min-h-screen bg-base text-content antialiased">
         <Navbar />
-        <main className="flex-1 navbar-offset">
+        <main className="flex-1 flex flex-col w-full" style={{ minHeight: 'calc(100vh - 72px)' }}>
           <AppRoutes />
         </main>
         <Footer />

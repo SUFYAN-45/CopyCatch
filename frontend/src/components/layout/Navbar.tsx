@@ -24,26 +24,27 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-16 border-b border-border-subtle bg-base/80 backdrop-blur-xl transition-colors">
-      <div className="max-w-[1280px] mx-auto h-full px-4 sm:px-6 lg:px-8 xl:px-10 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-border-subtle bg-base/95 backdrop-blur-xl transition-colors" style={{ height: '72px' }}>
+      <div className="page-container h-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
         
         {/* Brand Logo */}
         <Link 
           to="/" 
-          className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg p-1"
+          className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xl"
+          style={{ textDecoration: 'none' }}
           onClick={() => setMobileOpen(false)}
         >
-          <div className="relative size-9 rounded-xl bg-gradient-to-br from-accent to-blue-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+          <div className="relative size-9 rounded-xl bg-gradient-to-br from-accent to-blue-600 flex items-center justify-center shadow-sm">
             <FileSearch className="size-4.5 text-white stroke-[2.2]" />
             <div className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-accent-light ring-2 ring-base" />
           </div>
 
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="font-semibold text-[15px] tracking-tight text-content group-hover:text-accent transition-colors">
+            <div className="flex items-center gap-2 leading-none">
+              <span className="font-bold text-base tracking-tight text-content group-hover:text-accent transition-colors">
                 Copy<span className="text-accent">Catch</span>
               </span>
-              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-medium uppercase tracking-wider text-accent bg-accent/10 border border-accent/20">
+              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20">
                 AI NLP
               </span>
             </div>
@@ -53,56 +54,48 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-surface-elevated border border-border-subtle rounded-xl px-2 py-1 shadow-sm">
+        {/* Desktop Navigation Links - explicit gap: 32px */}
+        <nav className="hidden md:flex items-center" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           {NAV_ITEMS.map(({ to, label }) => {
             const isActive = pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
-                className={`relative px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                  isActive ? 'text-content' : 'text-content-secondary hover:text-content'
+                className={`text-sm font-medium transition-colors hover:text-accent ${
+                  isActive ? 'text-accent font-semibold' : 'text-content-secondary'
                 }`}
+                style={{ padding: '6px 12px', borderRadius: '8px', textDecoration: 'none' }}
               >
-                {isActive && (
-                  <motion.span
-                    layoutId="nav-pill"
-                    className="absolute inset-0 rounded-lg bg-highlight border border-border-subtle"
-                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  {label}
-                </span>
+                {label}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right Section: Theme & CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Right Section: Theme Toggle & CTA */}
+        <div className="hidden md:flex items-center" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <ThemeToggle />
           <Link
             to="/analyze"
             id="nav-cta-analyze"
-            className="group inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl transition-all duration-150 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="btn-primary"
+            style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}
           >
             <span>Run Analysis</span>
-            <ArrowRight className="size-3.5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
+            <ArrowRight className="size-4" />
           </Link>
         </div>
 
-        {/* Mobile Hamburger & Theme */}
+        {/* Mobile Hamburger Button */}
         <div className="flex md:hidden items-center gap-2">
           <ThemeToggle />
           <button
             id="navbar-menu-toggle"
             type="button"
-            className="p-2 rounded-lg text-content-secondary hover:text-content hover:bg-highlight transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="p-2 rounded-xl text-content-secondary hover:text-content hover:bg-highlight transition-colors cursor-pointer"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -117,7 +110,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16 }}
-            className="md:hidden border-b border-border-subtle bg-base/95 backdrop-blur-xl px-4 py-4 space-y-1.5 shadow-2xl"
+            className="md:hidden border-b border-border-subtle bg-base px-6 py-4 space-y-2 shadow-xl"
           >
             {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
               const isActive = pathname === to;
@@ -126,11 +119,12 @@ export function Navbar() {
                   key={to}
                   to={to}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-between py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
                     isActive 
-                      ? 'bg-accent/10 text-accent border border-accent/20' 
+                      ? 'bg-accent/10 text-accent font-semibold' 
                       : 'text-content-secondary hover:bg-highlight hover:text-content'
                   }`}
+                  style={{ textDecoration: 'none' }}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="size-4" />
@@ -145,7 +139,8 @@ export function Navbar() {
               <Link
                 to="/analyze"
                 onClick={() => setMobileOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-accent hover:bg-accent-hover transition-colors shadow-sm"
+                className="btn-primary w-full"
+                style={{ width: '100%', padding: '10px 20px' }}
               >
                 <span>Run Analysis</span>
                 <ArrowRight className="size-4" />

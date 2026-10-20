@@ -4,12 +4,14 @@ import {
   Layers, 
   BarChart2, 
   FileText, 
-  BookMarked, 
   ShieldCheck, 
-  Cpu,
-  Binary,
-  Terminal
+  Cpu, 
+  Binary, 
+  Terminal, 
+  Zap, 
+  ArrowRight 
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 
 const PIPELINE_STAGES = [
@@ -69,18 +71,18 @@ const TECH_STACK = [
     subtitle: 'all-MiniLM-L6-v2',
     desc: 'Dense 384-dimensional semantic embedding model optimized for rapid local inference without GPU requirements.',
     icon: Sparkles,
-    color: 'text-indigo-600 dark:text-indigo-400',
-    border: 'border-indigo-200 dark:border-indigo-500/20',
-    bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+    color: 'text-purple-600 dark:text-purple-400',
+    border: 'border-purple-200 dark:border-purple-500/20',
+    bg: 'bg-purple-50 dark:bg-purple-500/10',
   },
   {
     title: 'Scikit-Learn',
     subtitle: 'TF-IDF & N-Grams',
     desc: 'Sublinear term frequency vectorizer with unigram to trigram vocabulary analysis and word containment checking.',
     icon: Terminal,
-    color: 'text-violet-600 dark:text-violet-400',
-    border: 'border-violet-200 dark:border-violet-500/20',
-    bg: 'bg-violet-50 dark:bg-violet-500/10',
+    color: 'text-cyan-600 dark:text-cyan-400',
+    border: 'border-cyan-200 dark:border-cyan-500/20',
+    bg: 'bg-cyan-50 dark:bg-cyan-500/10',
   },
   {
     title: 'FastAPI',
@@ -100,176 +102,209 @@ const TECH_STACK = [
     border: 'border-blue-200 dark:border-blue-500/20',
     bg: 'bg-blue-50 dark:bg-blue-500/10',
   },
-  {
-    title: 'Tailwind CSS',
-    subtitle: 'Custom Design System',
-    desc: 'Sophisticated typography, tailored color tokens, dark elevation layers, and responsive CSS grid architectures.',
-    icon: Layers,
-    color: 'text-sky-600 dark:text-sky-400',
-    border: 'border-sky-200 dark:border-sky-500/20',
-    bg: 'bg-sky-50 dark:bg-sky-500/10',
-  },
-  {
-    title: 'Local JSON Storage',
-    subtitle: 'Zero External Database',
-    desc: 'File-based persistence ensuring 100% data sovereignty, zero cloud database leaks, and complete local execution.',
-    icon: BookMarked,
-    color: 'text-amber-600 dark:text-amber-400',
-    border: 'border-amber-200 dark:border-amber-500/20',
-    bg: 'bg-amber-50 dark:bg-amber-500/10',
-  },
 ];
 
-const SEVERITY_BANDS = [
-  { range: '0 – 20%',  label: 'Very Low Similarity', desc: 'Negligible overlap; original phrasing and conceptual framing.', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20' },
-  { range: '21 – 40%', label: 'Low Similarity',      desc: 'Incidental terminology or conventional domain phrasing.', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10', border: 'border-sky-200 dark:border-sky-500/20' },
-  { range: '41 – 60%', label: 'Moderate Similarity', desc: 'Partial paraphrasing or localized matching passages detected.', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-200 dark:border-indigo-500/20' },
-  { range: '61 – 80%', label: 'High Similarity',     desc: 'Substantial textual and semantic correspondence identified.', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-200 dark:border-amber-500/20' },
-  { range: '81 – 100%',label: 'Very High Similarity',desc: 'Near-verbatim reproduction or extensive replication across multiple sections.', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-200 dark:border-rose-500/20' },
+const CLASSIFICATION_TIERS = [
+  { range: '80% – 100%', label: 'Very High Similarity', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-200 dark:border-rose-500/20', desc: 'Extensive verbatim duplication or direct synonym replacement throughout the document.' },
+  { range: '60% – 79.9%', label: 'High Similarity', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-200 dark:border-amber-500/20', desc: 'Substantial structural overlap and paragraph-level paraphrase matches against the corpus.' },
+  { range: '40% – 59.9%', label: 'Moderate Similarity', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-200 dark:border-indigo-500/20', desc: 'Shared conceptual framework and isolated passage matches; may include standard terminology.' },
+  { range: '20% – 39.9%', label: 'Low Similarity', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10', border: 'border-sky-200 dark:border-sky-500/20', desc: 'Incidental topic overlap or generic boilerplate phrases without systematic reproduction.' },
+  { range: '0% – 19.9%', label: 'Minimal / No Similarity', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', desc: 'Essentially original phrasing with no significant correlation to the indexed reference corpus.' },
 ];
 
 export default function AboutPage() {
   return (
-    <PageContainer withGrid={false} className="pt-10 pb-24">
-      <div className="max-w-[1280px] mx-auto space-y-24">
+    <PageContainer withGrid={false}>
+      <div style={{ paddingTop: '32px', paddingBottom: '80px' }}>
         
-        {/* Page Header */}
-        <div className="text-center max-w-4xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 text-xs font-mono font-medium text-accent">
-            <Cpu className="size-3.5" />
-            <span>NLP Pipeline & Mathematical Architecture</span>
+        {/* Centered Header Section */}
+        <div style={{ textAlign: 'center', maxWidth: '760px', margin: '0 auto 56px auto' }} className="space-y-3">
+          <div className="flex justify-center">
+            <span 
+              className="rounded-full text-[11px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20"
+              style={{ padding: '4px 14px' }}
+            >
+              NLP Pipeline
+            </span>
           </div>
-
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-content tracking-tight">
-            How Copy<span className="text-accent">Catch</span> Analyzes Text
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-content tracking-tight">
+            How CopyCatch Analyzes Text
           </h1>
-
-          <p className="text-base sm:text-lg text-content-secondary leading-relaxed max-w-2xl mx-auto">
-            CopyCatch executes a multi-stage NLP pipeline that evaluates conceptual meaning through transformer embeddings and literal word usage through statistical n-grams.
+          <p className="text-sm sm:text-base text-content-secondary leading-relaxed">
+            A comprehensive overview of the algorithmic mechanisms, mathematical scoring models, and multi-stage extraction pipeline powering CopyCatch.
           </p>
         </div>
 
-        {/* ── Section 1: The 6-Stage NLP Pipeline (GRID LAYOUT) ─────────────── */}
-        <section className="space-y-10">
-          <div className="border-b border-border-subtle pb-5 text-center">
-            <h2 className="text-2xl font-bold text-content tracking-tight">
-              Six-Stage Detection Pipeline
-            </h2>
-            <p className="text-sm text-content-secondary mt-2">
-              End-To-End Local Execution &bull; From raw byte ingestion to forensic ranked similarity reporting.
-            </p>
+        {/* ── 6-STAGE PIPELINE GRID ───────────────────────────────────── */}
+        <div className="space-y-6" style={{ marginBottom: '56px' }}>
+          <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-content tracking-tight">
+                The 6-Stage Forensic Pipeline
+              </h2>
+              <p className="text-xs sm:text-sm text-content-secondary mt-0.5">
+                Every document executes through this sequential process from upload to match serialization.
+              </p>
+            </div>
+            <Zap className="size-5 text-accent hidden sm:block" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            style={{ gap: '24px' }}
+          >
             {PIPELINE_STAGES.map((stage) => {
               const Icon = stage.icon;
               return (
-                <div key={stage.step} className="surface-card rounded-2xl p-6 sm:p-8 border border-border-subtle hover:border-accent/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col h-full group">
-                  <div className="flex items-start justify-between gap-3 mb-6">
-                    <div className="size-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform">
-                      <Icon className="size-6 text-accent" />
+                <div
+                  key={stage.step}
+                  className="surface-card rounded-2xl border border-border-subtle hover:border-border-medium transition-colors shadow-sm"
+                  style={{ 
+                    padding: '28px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent: 'space-between' 
+                  }}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="font-mono text-xs font-bold text-accent bg-accent/10 rounded-lg border border-accent/20"
+                        style={{ padding: '4px 10px' }}
+                      >
+                        STAGE {stage.step}
+                      </span>
+                      <span className="text-[10px] font-mono font-medium text-content-muted uppercase tracking-wider">
+                        {stage.badge}
+                      </span>
                     </div>
-                    <span className="font-mono text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-accent to-purple-500 opacity-20 group-hover:opacity-40 transition-opacity">
-                      {stage.step}
-                    </span>
-                  </div>
 
-                  <div className="flex-1">
-                    <span className="inline-block px-2.5 py-1 mb-3 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20">
-                      {stage.badge}
-                    </span>
-                    <h3 className="text-lg font-bold text-content mb-3 leading-snug">
-                      {stage.title}
-                    </h3>
-                    <p className="text-sm text-content-secondary leading-relaxed mb-6">
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="size-9 rounded-xl bg-highlight border border-border-subtle flex items-center justify-center shrink-0 text-content">
+                        <Icon className="size-4.5 text-accent" />
+                      </div>
+                      <h3 className="font-bold text-sm sm:text-base text-content leading-snug">
+                        {stage.title}
+                      </h3>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-content-secondary leading-relaxed pt-1">
                       {stage.desc}
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-border-subtle flex items-center justify-between text-[11px] font-mono text-content-muted mt-auto">
-                    <span>Parameters:</span>
-                    <span className="text-purple-600 dark:text-purple-300 font-semibold">{stage.metrics}</span>
+                  <div 
+                    className="border-t border-border-subtle text-[11px] font-mono text-content-muted"
+                    style={{ paddingTop: '16px', marginTop: '16px' }}
+                  >
+                    Parameters: {stage.metrics}
                   </div>
                 </div>
               );
             })}
           </div>
-        </section>
+        </div>
 
-        {/* ── Section: Formula Visual Block ─────────────────────────────── */}
-        <section className="relative surface-card rounded-2xl p-10 sm:p-14 border border-border-subtle text-center overflow-hidden shadow-lg">
-          <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-purple-500 via-accent to-blue-500 opacity-60" />
-          <h2 className="text-sm font-bold text-content-muted mb-8 uppercase tracking-widest">Hybrid Scoring Formula</h2>
-          <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-2xl sm:text-4xl font-mono font-black">
-            <span className="text-content drop-shadow-sm">Hybrid</span>
-            <span className="text-border-strong">=</span>
-            <span className="text-purple-600 dark:text-purple-400 drop-shadow-sm">0.60 &times; Sem</span>
-            <span className="text-border-strong">+</span>
-            <span className="text-cyan-600 dark:text-cyan-400 drop-shadow-sm">0.40 &times; Lex</span>
-          </div>
-        </section>
-
-        {/* ── Section 2: Severity Classification Bands ────────────────── */}
-        <section className="space-y-10">
-          <div className="border-b border-border-subtle pb-5 text-center">
-            <h2 className="text-2xl font-bold text-content tracking-tight">
-              Calibrated Similarity Classifications
+        {/* ── CLASSIFICATION CRITERIA TABLE ───────────────────────────── */}
+        <div className="space-y-4" style={{ marginBottom: '56px' }}>
+          <div className="border-b border-border-subtle pb-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-content tracking-tight">
+              Classification Standard &amp; Similarity Tiers
             </h2>
-            <p className="text-sm text-content-secondary mt-2">
-              Objective evaluation criteria based on hybrid similarity percentages.
+            <p className="text-xs sm:text-sm text-content-secondary mt-0.5">
+              Objective risk classification based on composite 60/40 similarity scores.
             </p>
           </div>
 
-          <div className="surface-card rounded-2xl border border-border-subtle overflow-hidden max-w-4xl mx-auto shadow-sm">
+          <div className="surface-card rounded-2xl border border-border-subtle overflow-hidden shadow-sm">
             <div className="divide-y divide-border-subtle">
-              {SEVERITY_BANDS.map((band) => (
+              {CLASSIFICATION_TIERS.map((tier) => (
                 <div 
-                  key={band.label}
-                  className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-highlight transition-colors"
+                  key={tier.label} 
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-highlight/50 transition-colors"
+                  style={{ padding: '16px 24px' }}
                 >
-                  <div className="flex items-center gap-4">
-                    <span className="font-mono text-sm font-bold text-content-muted w-24 shrink-0">
-                      {band.range}
+                  <div className="flex items-center gap-3 sm:w-1/3">
+                    <span className="font-mono text-xs font-bold text-content w-24">
+                      {tier.range}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${band.bg} ${band.border} ${band.color}`}>
-                      {band.label}
+                    <span 
+                      className={`rounded-md text-xs font-semibold border ${tier.bg} ${tier.border} ${tier.color}`}
+                      style={{ padding: '2px 10px' }}
+                    >
+                      {tier.label}
                     </span>
                   </div>
-                  <p className="text-sm text-content-secondary sm:text-right max-w-md leading-relaxed">
-                    {band.desc}
+                  <p className="text-xs sm:text-sm text-content-secondary sm:w-2/3 leading-relaxed">
+                    {tier.desc}
                   </p>
                 </div>
               ))}
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* ── Section 3: Technology Stack ─────────────────────────────── */}
-        <section className="space-y-10">
-          <div className="border-b border-border-subtle pb-5 text-center">
-            <h2 className="text-2xl font-bold text-content tracking-tight">
-              Technology Stack
+        {/* ── CORE TECHNOLOGY STACK ───────────────────────────────────── */}
+        <div className="space-y-4" style={{ marginBottom: '56px' }}>
+          <div className="border-b border-border-subtle pb-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-content tracking-tight">
+              Core Engineering Stack
             </h2>
+            <p className="text-xs sm:text-sm text-content-secondary mt-0.5">
+              Underlying algorithmic toolkits and infrastructure.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div 
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+            style={{ gap: '24px' }}
+          >
             {TECH_STACK.map((tech) => {
               const Icon = tech.icon;
               return (
-                <div key={tech.title} className="surface-card rounded-xl p-5 sm:p-6 border border-border-subtle flex flex-col sm:flex-row items-start gap-4 group hover:border-accent/30 hover:shadow-md transition-all">
-                  <div className={`size-12 rounded-xl ${tech.bg} border ${tech.border} flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform`}>
-                    <Icon className={`size-5 ${tech.color}`} />
+                <div 
+                  key={tech.title} 
+                  className="surface-card rounded-2xl border border-border-subtle space-y-3 shadow-sm hover:border-border-medium transition-colors"
+                  style={{ padding: '24px' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`size-9 rounded-xl flex items-center justify-center border ${tech.bg} ${tech.border}`}>
+                      <Icon className={`size-4.5 ${tech.color}`} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-content">{tech.title}</h4>
+                      <p className="text-[11px] font-mono text-content-muted">{tech.subtitle}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-content group-hover:text-accent transition-colors">{tech.title}</h3>
-                    <span className="text-xs font-mono font-medium text-content-muted block mb-2">{tech.subtitle}</span>
-                    <p className="text-sm text-content-secondary leading-relaxed">{tech.desc}</p>
-                  </div>
+                  <p className="text-xs text-content-secondary leading-relaxed">
+                    {tech.desc}
+                  </p>
                 </div>
               );
             })}
           </div>
-        </section>
+        </div>
+
+        {/* Bottom CTA Card */}
+        <div 
+          className="surface-card rounded-2xl border border-border-subtle text-center space-y-4 shadow-sm"
+          style={{ padding: '40px 24px' }}
+        >
+          <h3 className="text-xl font-bold text-content">Experience the pipeline in action</h3>
+          <p className="text-xs sm:text-sm text-content-secondary max-w-lg mx-auto leading-relaxed">
+            Upload a document now to trigger the semantic vector and lexical containment engine.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/analyze"
+              className="btn-primary"
+              style={{ textDecoration: 'none' }}
+            >
+              <span>Launch Analyzer</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
 
       </div>
     </PageContainer>

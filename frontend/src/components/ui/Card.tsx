@@ -5,7 +5,7 @@ interface Props {
 
 export function Card({ className = '', children }: Props) {
   return (
-    <div className={`surface-card rounded-2xl border border-white/[0.08] shadow-lg shadow-black/20 ${className}`}>
+    <div className={`surface-card rounded-2xl border border-border-subtle shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -13,7 +13,7 @@ export function Card({ className = '', children }: Props) {
 
 export function CardHeader({ className = '', children }: Props) {
   return (
-    <div className={`px-6 pt-6 pb-4 border-b border-white/[0.06] ${className}`}>
+    <div className={`px-6 pt-6 pb-4 border-b border-border-subtle ${className}`}>
       {children}
     </div>
   );
